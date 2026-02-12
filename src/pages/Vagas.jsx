@@ -1,4 +1,4 @@
-/* eslint-disable no-undef */
+ 
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useRef } from "react";
 import { 
@@ -669,60 +669,157 @@ const btnWhite = {
 </div>
 
       {/* MODAL TAGS */}
-      {showTagsModal && (
-        <div style={modalOverlay}>
-            <div style={{...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth: '950px', height: '85vh', display: 'flex', flexDirection: 'column'}}>
-                <div style={modalHeader}>
-                    <div style={{display:'flex', alignItems:'center', gap:'10px'}}><Key size={24} color="#8b5cf6"/> <h3 style={{margin:0}}>Controle de TAGs</h3></div>
-                    <X size={20} cursor="pointer" onClick={() => setShowTagsModal(false)} />
-                </div>
-                <div style={{ marginBottom: '20px', display:'flex', flexDirection:'column', gap:'12px', padding:'15px', borderRadius:'12px', backgroundColor: theme.bg, border: `1px solid ${theme.border}`}}>
-                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'10px'}}>
-                        <div style={{display:'flex', gap:'10px', alignItems:'center'}}>
-                            <div style={{...searchContainer, backgroundColor: theme.mainBg, borderColor: theme.border, minWidth: '220px'}}>
-                                <Search size={16} color={theme.textSecondary} />
-                                <input type="text" placeholder="Buscar unidade..." style={{...searchInput, color: theme.text}} value={searchTermTags} onChange={(e) => setSearchTermTags(e.target.value)} />
-                            </div>
-                            <div style={pillContainer}>
-                                <span style={{...filterMiniLabel, color: theme.textSecondary}}>Status:</span>
-                                {["Todos", "Solicitado", "Disponivel", "Aplicado"].map(s => (
-                                    <button key={s} className={`filter-pill ${filterStatusTags === s ? 'active' : ''}`} onClick={() => setFilterStatusTags(s)}>{s}</button>
-                                ))}
-                            </div>
-                        </div>
-                        <button style={{...btnNew, height:'40px'}} onClick={() => { setTagFormData({id:"", id_vagas:"", id_unidade:"", veiculo: "Carro", status: "Solicitado"}); setShowAddTagModal(true); }}><Plus size={16}/> Nova TAG</button>
-                    </div>
-                </div>
-                <div style={{flex: 1, overflowY: 'auto', border: `1px solid ${theme.border}`, borderRadius: '12px'}}>
-                    <table style={{width: '100%', borderCollapse: 'collapse'}} className="tag-table">
-                        <thead><tr style={{backgroundColor: theme.bg, position:'sticky', top:0}}><th>Unidade</th><th>Veículo</th><th>Status</th><th>Solicitado em</th><th style={{textAlign:'right'}}>Ações</th></tr></thead>
-                        <tbody>
-                            {tagsFiltradas.length > 0 ? tagsFiltradas.map(t => {
-                                const unit = unidades.find(u => u.id?.toString() === t.id_unidade?.toString());
-                                return (
-                                    <tr key={t.id}>
-                                        <td><strong>{unit ? `B${unit.bloco}-${unit.unidade}` : t.id_unidade}</strong></td>
-                                        <td>{t.veiculo}</td>
-                                        <td>{getTagStatusBadge(t.id_unidade)}</td>
-                                        <td>{t.solicitado_timestamp ? t.solicitado_timestamp.split('T')[0] : '-'}</td>
-                                        <td style={{textAlign:'right'}}>
-                                            <button onClick={() => setShowTagMenuId(showTagMenuId === t.id ? null : t.id)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><MoreVertical size={20} color={theme.textSecondary} /></button>
-                                            {showTagMenuId === t.id && (
-                                              <div ref={menuRef} className="action-menu" style={{right: '40px', top: '10px'}}>
-                                                <div className="menu-item" onClick={() => { setTagFormData(t); setShowAddTagModal(true); setShowTagMenuId(null); }}><Edit2 size={14} /> Editar</div>
-                                                <div className="menu-item" style={{color:'#ef4444'}} onClick={() => { handleDeleteTag(t.id); setShowTagMenuId(null); }}><Trash2 size={14} /> Excluir</div>
-                                              </div>
-                                            )}
-                                        </td>
-                                    </tr>
-                                )
-                            }) : (<tr><td colSpan="5" style={{padding: '40px', textAlign: 'center', color: theme.textSecondary}}>Nenhuma TAG encontrada.</td></tr>)}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+{showTagsModal && (
+  <div style={modalOverlay}>
+    <div style={{
+      ...modalContent, 
+      backgroundColor: theme.mainBg, 
+      color: theme.text, 
+      maxWidth: '950px', 
+      width: '95%',
+      height: '85vh', 
+      display: 'flex', 
+      flexDirection: 'column',
+      padding: isMobile ? '15px' : '24px'
+    }}>
+      <div style={modalHeader}>
+        <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+          <Key size={24} color="#8b5cf6"/> 
+          <h3 style={{margin:0}}>Controle de TAGs</h3>
         </div>
-      )}
+        <X size={20} cursor="pointer" onClick={() => setShowTagsModal(false)} />
+      </div>
+
+      {/* ÁREA DE FILTROS DO MODAL - AJUSTADA PARA MOBILE */}
+      <div style={{ 
+        marginBottom: '20px', 
+        display:'flex', 
+        flexDirection:'column', 
+        gap:'12px', 
+        padding: isMobile ? '10px' : '15px', 
+        borderRadius:'12px', 
+        backgroundColor: theme.bg, 
+        border: `1px solid ${theme.border}`
+      }}>
+        <div style={{
+          display:'flex', 
+          justifyContent:'space-between', 
+          alignItems: isMobile ? 'stretch' : 'center', 
+          flexDirection: isMobile ? 'column' : 'row',
+          gap:'15px'
+        }}>
+          <div style={{
+            display:'flex', 
+            flexDirection: isMobile ? 'column' : 'row', 
+            gap:'10px', 
+            alignItems: isMobile ? 'stretch' : 'center',
+            flex: 1
+          }}>
+            {/* BUSCA TAG */}
+            <div style={{
+              ...searchContainer, 
+              backgroundColor: theme.mainBg, 
+              borderColor: theme.border, 
+              minWidth: isMobile ? '100%' : '220px'
+            }}>
+              <Search size={16} color={theme.textSecondary} />
+              <input 
+                type="text" 
+                placeholder="Buscar unidade..." 
+                style={{...searchInput, color: theme.text, width: '100%'}} 
+                value={searchTermTags} 
+                onChange={(e) => setSearchTermTags(e.target.value)} 
+              />
+            </div>
+
+            {/* STATUS TAG - SCROLL LATERAL SE PRECISAR */}
+            <div style={{
+              ...pillContainer, 
+              overflowX: 'auto', 
+              whiteSpace: 'nowrap',
+              paddingBottom: isMobile ? '5px' : '0'
+            }}>
+              <span style={{...filterMiniLabel, color: theme.textSecondary}}>Status:</span>
+              {["Todos", "Solicitado", "Disponivel", "Aplicado"].map(s => (
+                <button 
+                  key={s} 
+                  className={`filter-pill ${filterStatusTags === s ? 'active' : ''}`} 
+                  onClick={() => setFilterStatusTags(s)}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button 
+            style={{...btnNew, height:'40px', justifyContent: 'center'}} 
+            onClick={() => { setTagFormData({id:"", id_vagas:"", id_unidade:"", veiculo: "Carro", status: "Solicitado"}); setShowAddTagModal(true); }}
+          >
+            <Plus size={16}/> Nova TAG
+          </button>
+        </div>
+      </div>
+
+      {/* TABELA COM SCROLL LATERAL NO MOBILE */}
+      <div style={{
+        flex: 1, 
+        overflowY: 'auto', 
+        overflowX: 'auto', // Habilita scroll horizontal
+        border: `1px solid ${theme.border}`, 
+        borderRadius: '12px',
+        WebkitOverflowScrolling: 'touch'
+      }}>
+        <table style={{
+          width: '100%', 
+          minWidth: isMobile ? '600px' : '100%', // Garante que não esmague as colunas
+          borderCollapse: 'collapse'
+        }} className="tag-table">
+          <thead>
+            <tr style={{backgroundColor: theme.bg, position:'sticky', top:0, zIndex: 10}}>
+              <th style={{padding: '12px', textAlign: 'left'}}>Unidade</th>
+              <th style={{padding: '12px', textAlign: 'left'}}>Veículo</th>
+              <th style={{padding: '12px', textAlign: 'left'}}>Status</th>
+              <th style={{padding: '12px', textAlign: 'left'}}>Solicitado em</th>
+              <th style={{padding: '12px', textAlign: 'right'}}>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tagsFiltradas.length > 0 ? tagsFiltradas.map(t => {
+              const unit = unidades.find(u => u.id?.toString() === t.id_unidade?.toString());
+              return (
+                <tr key={t.id} style={{borderBottom: `1px solid ${theme.border}`}}>
+                  <td style={{padding: '12px'}}><strong>{unit ? `B${unit.bloco}-${unit.unidade}` : t.id_unidade}</strong></td>
+                  <td style={{padding: '12px'}}>{t.veiculo}</td>
+                  <td style={{padding: '12px'}}>{getTagStatusBadge(t.id_unidade)}</td>
+                  <td style={{padding: '12px'}}>{t.solicitado_timestamp ? t.solicitado_timestamp.split('T')[0] : '-'}</td>
+                  <td style={{padding: '12px', textAlign:'right', position: 'relative'}}>
+                    <button 
+                      onClick={() => setShowTagMenuId(showTagMenuId === t.id ? null : t.id)} 
+                      style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                    >
+                      <MoreVertical size={20} color={theme.textSecondary} />
+                    </button>
+                    {showTagMenuId === t.id && (
+                      <div ref={menuRef} className="action-menu" style={{right: '10px', top: '30px', zIndex: 100}}>
+                        <div className="menu-item" onClick={() => { setTagFormData(t); setShowAddTagModal(true); setShowTagMenuId(null); }}><Edit2 size={14} /> Editar</div>
+                        <div className="menu-item" style={{color:'#ef4444'}} onClick={() => { handleDeleteTag(t.id); setShowTagMenuId(null); }}><Trash2 size={14} /> Excluir</div>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              )
+            }) : (
+              <tr>
+                <td colSpan="5" style={{padding: '40px', textAlign: 'center', color: theme.textSecondary}}>Nenhuma TAG encontrada.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+)}
 
       {showAddTagModal && (
           <div style={{...modalOverlay, zIndex: 3000}}>
