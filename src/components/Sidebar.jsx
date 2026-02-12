@@ -195,6 +195,7 @@ const sidebarContainer = {
   flexDirection: "column",
   boxSizing: "border-box",
   transition: "transform 0.3s ease",
+  overflow: "hidden" // evita que a barra de scroll quebre o layout
 };
 
 const logoContainer = {
@@ -209,7 +210,13 @@ const logoContainer = {
 
 const logoIconStyle = { display: "flex", alignItems: "center", justifyContent: "center" };
 const logoText = { fontSize: "18px", fontWeight: "700", margin: 0 };
-const navStyle = { flex: 1 };
+
+const navStyle = { 
+  flex: 1,
+  overflowY: "auto", // permite scroll vertical quando necessário
+  paddingRight: "4px"
+};
+
 const categoryTitle = { fontSize: "11px", textTransform: "uppercase", color: "#64748b", fontWeight: "600", letterSpacing: "0.5px", marginBottom: "12px", marginTop: "20px" };
 const listStyle = { listStyle: "none", padding: 0, margin: 0 };
 const itemStyle = { display: "flex", alignItems: "center", padding: "10px 12px", cursor: "pointer", borderRadius: "8px", fontSize: "14px", fontWeight: "500", transition: "all 0.2s", marginBottom: "4px" };
