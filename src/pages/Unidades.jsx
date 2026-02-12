@@ -46,6 +46,14 @@ export default function Unidades() {
     { id: 'valor', label: 'Dívida', selected: true }
   ]);
 
+  const [isMobile, setIsMobile] = React.useState(window.innerWidth < 768);
+
+React.useEffect(() => {
+  const handleResize = () => setIsMobile(window.innerWidth < 768);
+  window.addEventListener('resize', handleResize);
+  return () => window.removeEventListener('resize', handleResize);
+}, []);
+
   const [formData, setFormData] = useState({ id: "", bloco: "", unidade: "", ocupado: "Não", status: "Adimplente", valor: "" });
   
   const menuRef = useRef(null);
@@ -209,7 +217,14 @@ export default function Unidades() {
       )}
 
       {/* HEADER */}
-      <div style={headerStyle}>
+      <div style={{
+        ...headerStyle, 
+        display: 'flex', 
+        flexDirection: isMobile ? 'column' : 'row', // Muda conforme a tela
+        alignItems: isMobile ? 'flex-start' : 'center', 
+        justifyContent: 'space-between',
+        gap: isMobile ? '20px' : '10px'
+      }}>
         <div>
           <h1 style={{...titleStyle, color: theme.text}}>Unidades</h1>
           <p style={{ margin: "4px 0 0 0", fontSize: "14px", color: theme.textSecondary }}>
@@ -220,17 +235,26 @@ export default function Unidades() {
           </p>
         </div>
         
-        <div style={{display:'flex', gap:'10px', alignItems: 'flex-start'}}>
-          <button style={{...btnWhite, backgroundColor: theme.mainBg, borderColor: theme.border, color: theme.textSecondary}} onClick={exportToExcel}>
+        <div style={{
+          display: 'flex', 
+          gap: '10px', 
+          alignItems: 'center', 
+          flexWrap: 'wrap', // Permite quebra de linha apenas se faltar espaço
+          width: isMobile ? '100%' : 'auto'
+        }}>
+          <button style={{...btnWhite, backgroundColor: theme.mainBg, borderColor: theme.border, color: theme.textSecondary, flex: isMobile ? '1 1 auto' : 'none'}} onClick={exportToExcel}>
             <Download size={18} color="#166534" /> Excel
           </button>
-          <button style={{...btnWhite, backgroundColor: theme.mainBg, borderColor: theme.border, color: theme.textSecondary}} onClick={() => setShowExportModal(true)}>
+          
+          <button style={{...btnWhite, backgroundColor: theme.mainBg, borderColor: theme.border, color: theme.textSecondary, flex: isMobile ? '1 1 auto' : 'none'}} onClick={() => setShowExportModal(true)}>
             <FileText size={18} color="#b91c1c" /> PDF
           </button>
-          <button style={{...btnWhite, backgroundColor: theme.mainBg, borderColor: theme.border, color: theme.textSecondary}} onClick={() => { setSearchUnidade(""); setFilterBloco("Todos"); setFilterOcupado("Todos"); setFilterStatus("Todos"); }}>
+          
+          <button style={{...btnWhite, backgroundColor: theme.mainBg, borderColor: theme.border, color: theme.textSecondary, flex: isMobile ? '1 1 auto' : 'none'}} onClick={() => { setSearchUnidade(""); setFilterBloco("Todos"); setFilterOcupado("Todos"); setFilterStatus("Todos"); }}>
             <RotateCcw size={18} /> Redefinir
           </button>
-          <button style={btnNew} onClick={() => { setModalType("add"); setFormData({id:"", bloco:"", unidade:"", ocupado:"Não", status:"Adimplente", valor: ""}); setShowModal(true); }}>
+          
+          <button style={{...btnNew, flex: isMobile ? '1 1 100%' : 'none'}} onClick={() => { setModalType("add"); setFormData({id:"", bloco:"", unidade:"", ocupado:"Não", status:"Adimplente", valor: ""}); setShowModal(true); }}>
             <Plus size={18} /> Nova Unidade
           </button>
         </div>
@@ -392,20 +416,65 @@ export default function Unidades() {
 }
 
 // ESTILOS
-const pageContainer = { padding: "20px", maxWidth: "1200px", margin: "0 auto" };
-const headerStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' };
+const pageContainer = { 
+  padding: "20px", 
+  maxWidth: "1200px", 
+  width: "100%", 
+  margin: "0 auto" 
+};
+
+const headerStyle = { 
+  display: 'flex', 
+  justifyContent: 'space-between', 
+  alignItems: 'flex-start', 
+  flexWrap: 'wrap',       // permite quebrar no mobile
+  gap: '15px',            // espaço entre itens quando quebram
+  marginBottom: '24px' 
+};
 const titleStyle = { fontSize: '24px', fontWeight: '700', margin: 0 };
 const btnNew = { backgroundColor: '#3b82f6', color: 'white', border: 'none', padding: '10px 18px', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' };
 const btnWhite = { border: '1px solid', padding: '10px 16px', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' };
 const filterCard = { padding: '15px 20px', borderRadius: '16px', border: '1px solid', marginBottom: '20px' };
-const filterRow = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' };
-const filterGroup = { display: 'flex', alignItems: 'center', gap: '10px' };
+
+const filterRow = { 
+  display: 'flex', 
+  justifyContent: 'space-between', 
+  alignItems: 'center', 
+  flexWrap: 'wrap',       // permite quebrar no mobile
+  gap: '10px' 
+};
+const filterGroup = { 
+  display: 'flex', 
+  alignItems: 'center', 
+  gap: '10px', 
+  flexWrap: 'wrap',       // quebra os botões no mobile
+};
 const searchContainer = { display: 'flex', alignItems: 'center', gap: '8px', padding: '0 12px', borderRadius: '8px', border: '1px solid' };
-const searchInput = { border: 'none', background: 'none', padding: '8px 0', outline: 'none', fontSize: '13px', width: '90px' };
-const pillContainer = { display: 'flex', gap: '8px', alignItems: 'center' };
+const searchInput = { 
+  border: 'none', 
+  background: 'none', 
+  padding: '8px 0', 
+  outline: 'none', 
+  fontSize: '13px', 
+  width: '100%'   // ocupa toda a largura
+};
+const pillContainer = { 
+  display: 'flex', 
+  gap: '8px', 
+  flexWrap: 'wrap' 
+};
 const filterMiniLabel = { fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' };
-const tableCard = { borderRadius: '16px', border: '1px solid', overflow: 'hidden' };
-const tableStyle = { width: '100%', borderCollapse: 'collapse' };
+const tableCard = { 
+  borderRadius: '16px', 
+  border: '1px solid', 
+  overflowX: 'auto',   // permite scroll horizontal no mobile
+  width: '100%'        // ocupa toda a largura
+};
+const tableStyle = { 
+  width: '100%', 
+  minWidth: '600px',   // evita quebrar colunas muito pequenas
+  borderCollapse: 'collapse' 
+};
 const thStyle = { textAlign: 'left', padding: '16px 24px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' };
 const thRow = { borderBottom: '1px solid' };
 const tdStyle = { padding: '16px 24px', fontSize: '14px' };
@@ -416,12 +485,32 @@ const badgeRed = { backgroundColor: '#fee2e2', color: '#b91c1c', padding: '4px 1
 const paginationFooter = { padding: '15px 24px', borderTop: '1px solid', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
 const selectPageSize = { padding: '4px 8px', borderRadius: '6px', border: '1px solid' };
 const modalOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 };
-const modalContent = { padding: '24px', borderRadius: '20px', width: '90%', maxWidth: '450px' };
+const modalContent = { 
+  padding: '24px', 
+  borderRadius: '20px', 
+  width: '90%',         // ajusta ao mobile
+  maxWidth: '450px',    // mantém limite no desktop
+};
 const modalHeader = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' };
-const formGrid = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' };
+const formGrid = { 
+  display: 'grid', 
+  gridTemplateColumns: '1fr 1fr', 
+  gap: '15px',
+  width: '100%', 
+  '@media(max-width: 600px)': { // pseudo-código, você pode usar styled-components ou tailwind
+    gridTemplateColumns: '1fr'   // no mobile, 1 coluna
+  }
+};
 const inputGroup = { display: 'flex', flexDirection: 'column', gap: '5px' };
 const labelStyle = { fontSize: '12px', fontWeight: '600' };
-const selectStyle = { padding: '10px', borderRadius: '8px', border: '1px solid', outline: 'none', fontSize: '14px' };
+const selectStyle = { 
+  padding: '10px', 
+  borderRadius: '8px', 
+  border: '1px solid', 
+  outline: 'none', 
+  fontSize: '14px', 
+  width: '100%'   // ocupa toda a largura
+};
 const modalFooter = { display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '24px' };
 const btnCancel = { padding: '10px 16px', borderRadius: '8px', border: '1px solid', background: 'none', cursor: 'pointer' };
 const fullScreenLoaderOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 };
