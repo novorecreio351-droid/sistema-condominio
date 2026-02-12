@@ -16,7 +16,14 @@ const SHEETS_URL = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8
 
 export default function Moradores() {
   const { theme } = useTheme();
-  
+
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const [currentUser, setCurrentUser] = useState({ nome: "Sistema" });
   const [moradores, setMoradores] = useState([]);
   const [vagas, setVagas] = useState([]); // <-- ADICIONE ESTA LINHA
@@ -348,31 +355,58 @@ tbody tr:last-child td {
         </div>
       )}
 
-      <div style={headerStyle}>
+      <div style={{
+  ...headerStyle,
+  flexDirection: isMobile ? 'column' : 'row',
+  alignItems: isMobile ? 'flex-start' : 'center',
+  gap: isMobile ? '20px' : '10px'
+}}>
   <div>
     <h1 style={{...titleStyle, color: theme.text}}>Moradores</h1>
-    {/* Descrição da área adicionada aqui */}
     <p style={{ margin: "4px 0 0 0", fontSize: "14px", color: theme.textSecondary }}>
       Gerencie o cadastro e informações dos moradores do condomínio.
     </p>
-    {/* Logado como abaixo da descrição */}
     <p style={{ margin: "8px 0 0 0", fontSize: "12px", color: theme.textSecondary }}>
       Logado como: <strong style={{ color: theme.text }}>{currentUser.nome}</strong>
     </p>
   </div>
   
-  <div style={{display:'flex', gap:'10px', alignItems: 'flex-start'}}>
-    <button style={{...btnWhite, backgroundColor: theme.mainBg, borderColor: theme.border, color: theme.textSecondary}} onClick={exportToExcel}><Download size={18} color="#166534" /> Excel</button>
-    <button style={{...btnWhite, backgroundColor: theme.mainBg, borderColor: theme.border, color: theme.textSecondary}} onClick={() => setShowExportModal(true)}><FileText size={18} color="#b91c1c" /> PDF</button>
-    <button style={{...btnWhite, backgroundColor: theme.mainBg, borderColor: theme.border, color: theme.textSecondary}} onClick={() => { setSearchNome(""); setFilterVinculo("Todos"); setFilterStatus("Todos"); }}><RotateCcw size={18} /> Redefinir</button>
-    <button style={btnNew} onClick={() => { setModalType("add"); setUnitSearch(""); setFormData({id:"", id_unidade:"", nome:"", cpf:"", tipo_vinculo:"Proprietário", telefone:"", email:"", data_entrada:"", data_saida:"", status:"Ativo"}); setShowModal(true); }}><Plus size={18} /> Novo Morador</button>
+  <div style={{
+    display: 'flex', 
+    gap: '10px', 
+    alignItems: 'center', 
+    flexWrap: 'wrap',
+    width: isMobile ? '100%' : 'auto'
+  }}>
+    <button style={{...btnWhite, backgroundColor: theme.mainBg, borderColor: theme.border, color: theme.textSecondary, flex: isMobile ? '1 1 auto' : 'none'}} onClick={exportToExcel}>
+      <Download size={18} color="#166534" /> Excel
+    </button>
+    <button style={{...btnWhite, backgroundColor: theme.mainBg, borderColor: theme.border, color: theme.textSecondary, flex: isMobile ? '1 1 auto' : 'none'}} onClick={() => setShowExportModal(true)}>
+      <FileText size={18} color="#b91c1c" /> PDF
+    </button>
+    <button style={{...btnWhite, backgroundColor: theme.mainBg, borderColor: theme.border, color: theme.textSecondary, flex: isMobile ? '1 1 auto' : 'none'}} onClick={() => { setSearchNome(""); setFilterVinculo("Todos"); setFilterStatus("Todos"); }}>
+      <RotateCcw size={18} /> Redefinir
+    </button>
+    <button style={{...btnNew, flex: isMobile ? '1 1 100%' : 'none', justifyContent: 'center'}} onClick={() => { setModalType("add"); setUnitSearch(""); setFormData({id:"", id_unidade:"", nome:"", cpf:"", tipo_vinculo:"Proprietário", telefone:"", email:"", data_entrada:"", data_saida:"", status:"Ativo"}); setShowModal(true); }}>
+      <Plus size={18} /> Novo Morador
+    </button>
   </div>
 </div>
 
-      <div style={{...filterCard, backgroundColor: theme.mainBg, borderColor: theme.border}}>
-  <div style={{...filterRow, flexWrap: 'wrap'}}>
+      <div style={{...filterCard, backgroundColor: theme.mainBg, borderColor: theme.border, padding: isMobile ? '15px 10px' : '15px 20px'}}>
+  <div style={{
+    display: 'flex', 
+    flexDirection: 'column', 
+    gap: '15px'
+  }}>
     
-    <div style={{...searchContainer, backgroundColor: theme.bg, borderColor: theme.border, minWidth: '300px'}}>
+    {/* BUSCA FULL WIDTH NO MOBILE */}
+    <div style={{
+      ...searchContainer, 
+      backgroundColor: theme.bg, 
+      borderColor: theme.border, 
+      width: '100%'
+    }}>
       <Search size={16} color={theme.textSecondary} />
       <input
         type="text"
@@ -383,49 +417,45 @@ tbody tr:last-child td {
       />
     </div>
 
-    <div style={{display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap'}}>
+    {/* GRUPO DE FILTROS */}
+    <div style={{
+      display: 'flex', 
+      flexDirection: isMobile ? 'column' : 'row', 
+      gap: isMobile ? '12px' : '20px',
+      flexWrap: 'wrap'
+    }}>
       
       {/* VÍNCULO */}
-      <div style={pillContainer}>
-        <span style={{...filterMiniLabel, color: theme.textSecondary}}>Vínculo:</span>
-        {["Todos", "Proprietário", "Locatário", "Temporada"].map(v => (
-          <button
-            key={v}
-            className={`filter-pill ${filterVinculo === v ? 'active' : ''}`}
-            onClick={() => setFilterVinculo(v)}
-          >
-            {v}
-          </button>
-        ))}
+      <div style={{...pillContainer, flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: '8px'}}>
+        <span style={{...filterMiniLabel, color: theme.textSecondary, minWidth: '60px'}}>Vínculo:</span>
+        <div style={{display: 'flex', gap: '5px', flexWrap: 'wrap'}}>
+          {["Todos", "Proprietário", "Locatário", "Temporada"].map(v => (
+            <button key={v} className={`filter-pill ${filterVinculo === v ? 'active' : ''}`} onClick={() => setFilterVinculo(v)} style={{padding: isMobile ? '4px 8px' : '6px 12px'}}>{v}</button>
+          ))}
+        </div>
       </div>
 
       {/* STATUS */}
-      <div style={pillContainer}>
-        <span style={{...filterMiniLabel, color: theme.textSecondary}}>Status:</span>
-        {["Todos", "Ativo", "Inativo"].map(s => (
-          <button
-            key={s}
-            className={`filter-pill ${filterStatus === s ? 'active' : ''}`}
-            onClick={() => setFilterStatus(s)}
-          >
-            {s}
-          </button>
-        ))}
+      <div style={{...pillContainer, flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: '8px'}}>
+        <span style={{...filterMiniLabel, color: theme.textSecondary, minWidth: '60px'}}>Status:</span>
+        <div style={{display: 'flex', gap: '5px'}}>
+          {["Todos", "Ativo", "Inativo"].map(s => (
+            <button key={s} className={`filter-pill ${filterStatus === s ? 'active' : ''}`} onClick={() => setFilterStatus(s)} style={{padding: isMobile ? '4px 8px' : '6px 12px'}}>{s}</button>
+          ))}
+        </div>
       </div>
 
-      {/* 🔥 BLOCO (NOVO) */}
-      <div style={pillContainer}>
-        <span style={{...filterMiniLabel, color: theme.textSecondary}}>Bloco:</span>
-        {["Todos", ...[...new Set(unidadesExistentes.map(u => String(u.bloco)))].sort((a,b) => a - b)]
-          .map(b => (
-            <button
-              key={b}
-              className={`filter-pill ${filterBloco === b ? 'active' : ''}`}
-              onClick={() => setFilterBloco(b)}
-            >
-              {b === "Todos" ? "Todos" : `BL ${b}`}
-            </button>
-          ))}
+      {/* BLOCO */}
+      <div style={{...pillContainer, flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: '8px'}}>
+        <span style={{...filterMiniLabel, color: theme.textSecondary, minWidth: '60px'}}>Bloco:</span>
+        <div style={{display: 'flex', gap: '5px', flexWrap: 'wrap'}}>
+          {["Todos", ...[...new Set(unidadesExistentes.map(u => String(u.bloco)))].sort((a,b) => a - b)]
+            .map(b => (
+              <button key={b} className={`filter-pill ${filterBloco === b ? 'active' : ''}`} onClick={() => setFilterBloco(b)} style={{padding: isMobile ? '4px 8px' : '6px 12px'}}>
+                {b === "Todos" ? "Todos" : `BL ${b}`}
+              </button>
+            ))}
+        </div>
       </div>
 
     </div>
@@ -433,85 +463,121 @@ tbody tr:last-child td {
 </div>
 
 
-      <div style={{...tableCard, backgroundColor: theme.mainBg, borderColor: theme.border, overflow: 'visible'}}>
-        <table style={tableStyle}>
-          <thead>
-            <tr style={{...thRow, borderBottomColor: theme.border}}>
-              {['id_unidade', 'nome', 'tipo_vinculo', 'contato', 'status'].map(key => (
-                 <th key={key} style={{...thStyle, backgroundColor: theme.isDark ? '#1e293b' : '#f8fafc', color: theme.textSecondary}} onClick={() => setSortConfig({key: key === 'contato' ? 'telefone' : key, direction: sortConfig.direction === 'asc' ? 'desc' : 'asc'})}>
-                    <div style={thFlex}>
-                      {key === 'id_unidade' ? 'Unidade' : key === 'tipo_vinculo' ? 'Vínculo' : key.charAt(0).toUpperCase() + key.slice(1)}
-                      {sortConfig.key === (key === 'contato' ? 'telefone' : key) && (sortConfig.direction === 'asc' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>)}
-                    </div>
-                 </th>
-              ))}
-              <th style={{ ...thStyle, backgroundColor: theme.isDark ? '#1e293b' : '#f8fafc', color: theme.textSecondary, textAlign: 'right' }}>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {moradoresExibidos.map((m, idx) => (
-              <tr key={m.id} style={{...trStyle, borderBottom: `1px solid ${theme.border}`}}>
-                <td style={{...tdStyle, color: theme.text}}><strong>{formatarIDExibicao(m.id_unidade)}</strong></td>
-                <td style={{...tdStyle, color: theme.text}}>
-                  <div style={{fontWeight:'600'}}>{m.nome}</div>
-                  <div style={{fontSize:'11px', color: theme.textSecondary}}>{maskCPF(m.cpf)}</div>
-                </td>
-                <td style={tdStyle}>
-                  <span style={m.tipo_vinculo === "Proprietário" ? badgeBlue : m.tipo_vinculo === "Locatário" ? badgeGreen : badgeOrange}>
-                    {m.tipo_vinculo}
-                  </span>
-                </td>
-                <td style={{...tdStyle, color: theme.text}}>
-                  <div style={{display:'flex', alignItems:'center', gap: '5px'}}><Phone size={12}/> {maskPhone(m.telefone)}</div>
-                  <div style={{fontSize:'12px', color: theme.textSecondary}}>{m.email}</div>
-                </td>
-                <td style={tdStyle}><span style={m.status === "Ativo" ? badgeGreen : badgeRed}>{m.status}</span></td>
-                <td style={{ ...tdStyle, textAlign: 'right', position: 'relative' }}>
-                    <div style={{display:'flex', justifyContent:'flex-end', gap:'10px'}}>
-                        <button 
-                            onClick={() => { setSelectedMorador(m); setShowViewModal(true); }}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3b82f6' }}
-                            title="Ver Detalhes"
-                        >
-                            <Eye size={20} />
-                        </button>
-                        <button onClick={() => setShowMenuId(showMenuId === m.id ? null : m.id)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-                            <MoreVertical size={20} color={theme.textSecondary} />
-                        </button>
-                    </div>
-                    {showMenuId === m.id && (
-                      <div ref={menuRef} className="action-menu" style={{ 
-                        top: idx > moradoresExibidos.length - 3 && moradoresExibidos.length > 3 ? 'auto' : '10px', 
-                        bottom: idx > moradoresExibidos.length - 3 && moradoresExibidos.length > 3 ? '10px' : 'auto' 
-                      }}>
-                          <div className="menu-item" onClick={() => { setModalType("edit"); setFormData(m); setUnitSearch(""); setShowModal(true); setShowMenuId(null); }}><Edit2 size={14} /> Editar</div>
-                          <div className="menu-item" style={{color:'#ef4444'}} onClick={() => { handleDelete(m.id); setShowMenuId(null); }}><Trash2 size={14} /> Excluir</div>
-                      </div>
-                    )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+     <div style={{...tableCard, backgroundColor: theme.mainBg, borderColor: theme.border, overflow: 'hidden'}}>
+  
+  {/* CONTAINER COM SCROLL APENAS NO MOBILE */}
+  <div style={{ 
+    width: '100%', 
+    overflowX: isMobile ? 'auto' : 'visible', 
+    WebkitOverflowScrolling: 'touch' 
+  }}>
+    <table style={{ 
+      ...tableStyle, 
+      minWidth: isMobile ? '800px' : '100%', // No mobile a tabela não esmaga, ela ganha scroll
+      tableLayout: 'fixed'
+    }}>
+      <thead>
+        <tr style={{...thRow, borderBottomColor: theme.border}}>
+          {['id_unidade', 'nome', 'tipo_vinculo', 'contato', 'status'].map(key => (
+             <th key={key} style={{...thStyle, backgroundColor: theme.isDark ? '#1e293b' : '#f8fafc', color: theme.textSecondary}} onClick={() => setSortConfig({key: key === 'contato' ? 'telefone' : key, direction: sortConfig.direction === 'asc' ? 'desc' : 'asc'})}>
+                <div style={thFlex}>
+                  {key === 'id_unidade' ? 'Unidade' : key === 'tipo_vinculo' ? 'Vínculo' : key.charAt(0).toUpperCase() + key.slice(1)}
+                  {sortConfig.key === (key === 'contato' ? 'telefone' : key) && (sortConfig.direction === 'asc' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>)}
+                </div>
+             </th>
+          ))}
+          <th style={{ ...thStyle, backgroundColor: theme.isDark ? '#1e293b' : '#f8fafc', color: theme.textSecondary, textAlign: 'right' }}>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {moradoresExibidos.map((m, idx) => (
+          <tr key={m.id} style={{...trStyle, borderBottom: `1px solid ${theme.border}`}}>
+            <td style={{...tdStyle, color: theme.text}}><strong>{formatarIDExibicao(m.id_unidade)}</strong></td>
+            <td style={{...tdStyle, color: theme.text}}>
+              <div style={{fontWeight:'600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{m.nome}</div>
+              <div style={{fontSize:'11px', color: theme.textSecondary}}>{maskCPF(m.cpf)}</div>
+            </td>
+            <td style={tdStyle}>
+              <span style={m.tipo_vinculo === "Proprietário" ? badgeBlue : m.tipo_vinculo === "Locatário" ? badgeGreen : badgeOrange}>
+                {m.tipo_vinculo}
+              </span>
+            </td>
+            <td style={{...tdStyle, color: theme.text}}>
+              <div style={{display:'flex', alignItems:'center', gap: '5px', whiteSpace: 'nowrap'}}><Phone size={12}/> {maskPhone(m.telefone)}</div>
+              <div style={{fontSize:'12px', color: theme.textSecondary, whiteSpace: 'nowrap'}}>{m.email}</div>
+            </td>
+            <td style={tdStyle}><span style={m.status === "Ativo" ? badgeGreen : badgeRed}>{m.status}</span></td>
+            <td style={{ ...tdStyle, textAlign: 'right', position: 'relative' }}>
+                <div style={{display:'flex', justifyContent:'flex-end', gap:'10px'}}>
+                    <button 
+                        onClick={() => { setSelectedMorador(m); setShowViewModal(true); }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3b82f6' }}
+                    >
+                        <Eye size={20} />
+                    </button>
+                    <button onClick={() => setShowMenuId(showMenuId === m.id ? null : m.id)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                        <MoreVertical size={20} color={theme.textSecondary} />
+                    </button>
+                </div>
+                {showMenuId === m.id && (
+                  <div ref={menuRef} className="action-menu" style={{ 
+                    top: idx > moradoresExibidos.length - 3 && moradoresExibidos.length > 3 ? 'auto' : '10px', 
+                    bottom: idx > moradoresExibidos.length - 3 && moradoresExibidos.length > 3 ? '10px' : 'auto',
+                    right: '10px',
+                    zIndex: 100
+                  }}>
+                      <div className="menu-item" onClick={() => { setModalType("edit"); setFormData(m); setUnitSearch(""); setShowModal(true); setShowMenuId(null); }}><Edit2 size={14} /> Editar</div>
+                      <div className="menu-item" style={{color:'#ef4444'}} onClick={() => { handleDelete(m.id); setShowMenuId(null); }}><Trash2 size={14} /> Excluir</div>
+                  </div>
+                )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
 
-        <div style={{...paginationFooter, backgroundColor: theme.isDark ? '#1e293b' : '#fcfcfc', borderTopColor: theme.border}}>
-          <div style={{display:'flex', alignItems:'center', gap:'10px', fontSize:'13px', color: theme.text}}>
-            Exibir: 
-            <select style={{...selectPageSize, backgroundColor: theme.bg, color: theme.text, borderColor: theme.border}} value={itemsPerPage} onChange={(e) => setItemsPerPage(e.target.value === "Todos" ? "Todos" : Number(e.target.value))}>
-              {[10, 20, 50, 100].map(v => <option key={v} value={v}>{v}</option>)}
-              <option value="Todos">Todos</option>
-            </select> de {totalItems} registros
-          </div>
-          {itemsPerPage !== "Todos" && (
-            <div style={{display:'flex', alignItems:'center', gap:'15px', color: theme.text}}>
-              <button className="pagination-btn" disabled={currentPage === 1} onClick={() => setCurrentPage(prev => prev - 1)}><ChevronLeft size={18} /></button>
-              <span style={{fontSize:'13px', fontWeight:'600'}}>{currentPage} / {totalPages}</span>
-              <button className="pagination-btn" disabled={currentPage === totalPages || totalPages === 0} onClick={() => setCurrentPage(prev => prev + 1)}><ChevronRight size={18} /></button>
-            </div>
-          )}
-        </div>
+  {/* RODAPÉ RESPONSIVO (IGUAL AO UNIDADES.JSX) */}
+  <div style={{
+    ...paginationFooter, 
+    backgroundColor: theme.isDark ? '#1e293b' : '#fcfcfc', 
+    borderTopColor: theme.border,
+    flexDirection: isMobile ? 'column' : 'row', // Empilha no mobile
+    gap: isMobile ? '15px' : '0',
+    padding: isMobile ? '15px' : '10px 24px',
+    height: 'auto'
+  }}>
+    <div style={{display:'flex', alignItems:'center', gap:'10px', fontSize:'13px', color: theme.text}}>
+      Exibir: 
+      <select style={{...selectPageSize, backgroundColor: theme.bg, color: theme.text, borderColor: theme.border}} value={itemsPerPage} onChange={(e) => {setItemsPerPage(e.target.value === "Todos" ? "Todos" : Number(e.target.value)); setCurrentPage(1);}}>
+        {[10, 20, 50, 100].map(v => <option key={v} value={v}>{v}</option>)}
+        <option value="Todos">Todos</option>
+      </select> de {totalItems} registros
+    </div>
+    
+    {itemsPerPage !== "Todos" && (
+      <div style={{display:'flex', alignItems:'center', gap:'15px', color: theme.text}}>
+        <button 
+          style={{background:'none', border:'none', cursor: currentPage === 1 ? 'default' : 'pointer', opacity: currentPage === 1 ? 0.3 : 1, color: theme.text}} 
+          disabled={currentPage === 1} 
+          onClick={() => setCurrentPage(prev => prev - 1)}
+        >
+          <ChevronLeft size={20} />
+        </button>
+        
+        <span style={{fontSize:'13px', fontWeight:'600'}}>{currentPage} / {totalPages}</span>
+        
+        <button 
+          style={{background:'none', border:'none', cursor: (currentPage === totalPages || totalPages === 0) ? 'default' : 'pointer', opacity: (currentPage === totalPages || totalPages === 0) ? 0.3 : 1, color: theme.text}} 
+          disabled={currentPage === totalPages || totalPages === 0} 
+          onClick={() => setCurrentPage(prev => prev + 1)}
+        >
+          <ChevronRight size={20} />
+        </button>
       </div>
-
+    )}
+  </div>
+</div>
      {/* MODAL DE VISUALIZAÇÃO (VER MAIS) */}
 {showViewModal && selectedMorador && (
   <div style={modalOverlay}>
@@ -600,8 +666,16 @@ tbody tr:last-child td {
               <h3 style={{margin:0}}>{modalType === "add" ? "Novo Morador" : "Editar Morador"}</h3>
               <X size={20} style={{ cursor: 'pointer' }} onClick={() => setShowModal(false)} />
             </div>
-            <div style={formGrid}>
-              <div style={{...inputGroup, gridColumn: 'span 2'}}>
+            {/* GRID DO FORMULÁRIO RESPONSIVO */}
+            <div style={{
+              ...formGrid, 
+              gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', 
+              maxHeight: isMobile ? '60vh' : 'auto', 
+              overflowY: 'auto',
+              paddingRight: isMobile ? '5px' : '0'
+            }}>
+              
+              <div style={{...inputGroup, gridColumn: isMobile ? 'span 1' : 'span 2'}}>
                 <label style={{...labelStyle, color: theme.textSecondary}}>Unidade</label>
                 <div className="dropdown-wrapper" ref={dropdownRef}>
                   <div className="custom-select-box" style={{backgroundColor: theme.bg, borderColor: theme.border}} onClick={() => setShowUnitDropdown(!showUnitDropdown)}>
@@ -622,6 +696,7 @@ tbody tr:last-child td {
                   )}
                 </div>
               </div>
+
               <div style={inputGroup}>
                 <label style={{...labelStyle, color: theme.textSecondary}}>Vínculo</label>
                 <select style={{...selectStyle, backgroundColor: theme.mainBg, color: theme.text, borderColor: theme.border}} value={formData.tipo_vinculo} onChange={(e) => setFormData({...formData, tipo_vinculo: e.target.value})}>
@@ -630,6 +705,7 @@ tbody tr:last-child td {
                   <option value="Temporada">Temporada</option>
                 </select>
               </div>
+
               <div style={inputGroup}>
                 <label style={{...labelStyle, color: theme.textSecondary}}>Status</label>
                 <select style={{...selectStyle, backgroundColor: theme.mainBg, color: theme.text, borderColor: theme.border}} value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})}>
@@ -637,26 +713,32 @@ tbody tr:last-child td {
                   <option value="Inativo">Inativo</option>
                 </select>
               </div>
-              <div style={{...inputGroup, gridColumn: 'span 2'}}>
+
+              <div style={{...inputGroup, gridColumn: isMobile ? 'span 1' : 'span 2'}}>
                 <label style={{...labelStyle, color: theme.textSecondary}}>Nome Completo</label>
                 <input type="text" style={{...selectStyle, backgroundColor: theme.mainBg, color: theme.text, borderColor: theme.border}} value={formData.nome} onChange={(e) => setFormData({...formData, nome: e.target.value})} />
               </div>
+
               <div style={inputGroup}>
                 <label style={{...labelStyle, color: theme.textSecondary}}>CPF</label>
                 <input type="text" placeholder="000.000.000-00" style={{...selectStyle, backgroundColor: theme.mainBg, color: theme.text, borderColor: theme.border}} value={formData.cpf} onChange={(e) => setFormData({...formData, cpf: maskCPF(e.target.value)})} />
               </div>
+
               <div style={inputGroup}>
                 <label style={{...labelStyle, color: theme.textSecondary}}>Telefone</label>
                 <input type="text" placeholder="(00) 00000-0000" style={{...selectStyle, backgroundColor: theme.mainBg, color: theme.text, borderColor: theme.border}} value={formData.telefone} onChange={(e) => setFormData({...formData, telefone: maskPhone(e.target.value)})} />
               </div>
-              <div style={{...inputGroup, gridColumn: 'span 2'}}>
+
+              <div style={{...inputGroup, gridColumn: isMobile ? 'span 1' : 'span 2'}}>
                 <label style={{...labelStyle, color: theme.textSecondary}}>E-mail</label>
                 <input type="email" placeholder="exemplo@email.com" style={{...selectStyle, backgroundColor: theme.mainBg, color: theme.text, borderColor: theme.border}} value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} />
               </div>
+
               <div style={inputGroup}>
                 <label style={{...labelStyle, color: theme.textSecondary}}>Data Entrada</label>
                 <input type="date" style={{...selectStyle, backgroundColor: theme.mainBg, color: theme.text, borderColor: theme.border}} value={formData.data_entrada} onChange={(e) => setFormData({...formData, data_entrada: e.target.value})} />
               </div>
+
               {formData.tipo_vinculo !== "Proprietário" && (
                 <div style={inputGroup}>
                   <label style={{...labelStyle, color: theme.textSecondary}}>Data Saída</label>
@@ -664,9 +746,25 @@ tbody tr:last-child td {
                 </div>
               )}
             </div>
-            <div style={modalFooter}>
-              <button style={{...btnCancel, color: theme.text, borderColor: theme.border}} onClick={() => setShowModal(false)}>Cancelar</button>
-              <button style={btnNew} onClick={handleSave}>Confirmar</button>
+
+            {/* RODAPÉ DO MODAL */}
+            <div style={{
+              ...modalFooter, 
+              flexDirection: isMobile ? 'column-reverse' : 'row', 
+              gap: '10px'
+            }}>
+              <button style={{
+                ...btnCancel, 
+                color: theme.text, 
+                borderColor: theme.border,
+                width: isMobile ? '100%' : 'auto'
+              }} onClick={() => setShowModal(false)}>Cancelar</button>
+              
+              <button style={{
+                ...btnNew, 
+                width: isMobile ? '100%' : 'auto',
+                justifyContent: 'center'
+              }} onClick={handleSave}>Confirmar</button>
             </div>
           </div>
         </div>
@@ -674,7 +772,6 @@ tbody tr:last-child td {
     </div>
   );
 }
-
 // ESTILOS SINCRONIZADOS
 const pageContainer = { padding: "20px", maxWidth: "1200px", margin: "0 auto" };
 const headerStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' };

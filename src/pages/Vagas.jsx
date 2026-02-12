@@ -30,6 +30,12 @@ export default function Vagas({ user }) {
   const [showTagsModal, setShowTagsModal] = useState(false); 
   const [showAddTagModal, setShowAddTagModal] = useState(false);
 
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   // --- ESTADOS PARA EXPORTAÇÃO (ESTILO MORADORES) ---
   const [showExportModal, setShowExportModal] = useState(false);
   const [selectedCols, setSelectedCols] = useState(["unidade", "veiculos", "placas", "tag"]);
@@ -403,202 +409,264 @@ const btnWhite = {
         </div>
       )}
 
-      <div style={headerStyle}>
-        <div>
-          <h1 style={{...titleStyle, color: theme.text}}>Gestão de Vagas</h1>
-          <p style={{ margin: "4px 0 0 0", fontSize: "14px", color: theme.textSecondary }}>Monitoramento de veículos e acessos.</p>
-        </div>
-        <div style={{display: 'flex', gap: '10px'}}>
-            <button className="export-btn" onClick={exportToExcel}><Download size={16} color="#10b981" /> XLSX</button>
-            <button className="export-btn" onClick={() => setShowExportModal(true)}><FileText size={16} color="#ef4444" /> PDF</button>
-            <button
-  style={{
-    ...btnWhite,
-    backgroundColor: theme.mainBg,
-    borderColor: theme.border,
-    color: theme.textSecondary
-  }}
-  onClick={() => {
-    setSearchTerm("");
-    setFilterBloco("Todos");
-    setFilterTagStatus("Todos");
-    setFilterVeiculo("Todos");
-    setCurrentPage(1);
-  }}
->
-  <RotateCcw size={18} /> Redefinir
-</button>
-            <button style={{...btnNew, backgroundColor: '#8b5cf6'}} onClick={() => setShowTagsModal(true)}><Tag size={18} /> TAGs</button>
-            
+      {/* HEADER DE TÍTULO E EXPORTAÇÃO */}
+<div style={{
+  ...headerStyle, 
+  flexDirection: isMobile ? 'column' : 'row', 
+  alignItems: isMobile ? 'stretch' : 'center',
+  gap: isMobile ? '15px' : '20px'
+}}>
+  <div>
+    <h1 style={{...titleStyle, color: theme.text}}>Gestão de Vagas</h1>
+    <p style={{ margin: "4px 0 0 0", fontSize: "14px", color: theme.textSecondary }}>Monitoramento de veículos e acessos.</p>
+  </div>
+  
+  <div style={{ 
+    display: 'flex', 
+    flexDirection: 'column', // Empilha os grupos no mobile
+    gap: '10px',
+    width: isMobile ? '100%' : 'auto'
+  }}>
+    {/* LINHA DE EXPORTAÇÃO E REDEFINIR */}
+    <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
+      <button className="export-btn" style={{ flex: isMobile ? 1 : 'none' }} onClick={exportToExcel}><Download size={16} color="#10b981" /> XLSX</button>
+      <button className="export-btn" style={{ flex: isMobile ? 1 : 'none' }} onClick={() => setShowExportModal(true)}><FileText size={16} color="#ef4444" /> PDF</button>
+      <button
+        style={{
+          ...btnWhite,
+          backgroundColor: theme.mainBg,
+          borderColor: theme.border,
+          color: theme.textSecondary,
+          flex: isMobile ? 1 : 'none',
+          justifyContent: 'center'
+        }}
+        onClick={() => {
+          setSearchTerm("");
+          setFilterBloco("Todos");
+          setFilterTagStatus("Todos");
+          setFilterVeiculo("Todos");
+          setCurrentPage(1);
+        }}
+      >
+        <RotateCcw size={18} /> {isMobile ? "Limpar" : "Redefinir"}
+      </button>
+    </div>
 
-            <button style={btnNew} onClick={() => { setModalType("add"); setFormData({id_unidade: "", possui_carro: "Não", placa_carro: "", modelo_carro: "", status_carro: "Ativo", possui_moto: "Não", placa_moto: "", modelo_moto: "", status_moto: "Ativo", observacoes: ""}); setShowModal(true); }}><Plus size={18} /> Nova Vaga</button>
+    {/* BOTÕES TAGS E NOVA VAGA - FICAM EM BAIXO NO MOBILE */}
+    {isMobile && (
+      <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
+        <button 
+          style={{...btnNew, backgroundColor: '#8b5cf6', flex: 1, justifyContent: 'center'}} 
+          onClick={() => setShowTagsModal(true)}
+        >
+          <Tag size={18} /> TAGs
+        </button>
+        <button 
+          style={{...btnNew, flex: 1, justifyContent: 'center'}} 
+          onClick={() => { 
+            setModalType("add"); 
+            setFormData({id_unidade: "", possui_carro: "Não", placa_carro: "", modelo_carro: "", status_carro: "Ativo", possui_moto: "Não", placa_moto: "", modelo_moto: "", status_moto: "Ativo", observacoes: ""}); 
+            setShowModal(true); 
+          }}
+        >
+          <Plus size={18} /> Nova Vaga
+        </button>
+      </div>
+    )}
+  </div>
+</div>
+
+{/* FILTROS (REMOVIDO OS BOTÕES DAQUI PARA NÃO REPETIR NO MOBILE) */}
+<div style={{...filterCard, backgroundColor: theme.mainBg, borderColor: theme.border, padding: isMobile ? '15px' : '20px'}}>
+  <div style={{display:'flex', flexDirection:'column', gap: '15px'}}>
+    
+    <div style={{...filterRow, flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center'}}>
+      <div style={{...searchContainer, backgroundColor: theme.bg, borderColor: theme.border, width: isMobile ? '100%' : 'auto'}}>
+        <Search size={16} color={theme.textSecondary} />
+        <input type="text" placeholder="Unidade ou Placa..." style={{...searchInput, color: theme.text, width: '100%'}} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+      </div>
+      
+      <div style={{...filterGroup, flexWrap: 'wrap', marginTop: isMobile ? '5px' : '0'}}>
+        {blocosDisponiveis.map(b => (
+          <button key={b} className={`filter-pill ${filterBloco === b ? 'active' : ''}`} onClick={() => setFilterBloco(b)}>
+            {b === "Todos" ? "Todos" : `B${b}`}
+          </button>
+        ))}
+      </div>
+    </div>
+
+    <div style={{...filterRow, flexDirection: isMobile ? 'column' : 'row', gap: '15px'}}>
+      <div style={pillContainer}>
+        <span style={{...filterMiniLabel, color: theme.textSecondary}}>Tag:</span>
+        <div style={{display:'flex', gap:'5px', flexWrap: 'wrap'}}>
+          {["Todos", "Sem Tag", "Solicitado", "Disponivel", "Aplicado"].map(s => (
+            <button key={s} className={`filter-pill ${filterTagStatus === s ? 'active' : ''}`} onClick={() => setFilterTagStatus(s)}>{s}</button>
+          ))}
         </div>
       </div>
-
-      <div style={{...filterCard, backgroundColor: theme.mainBg, borderColor: theme.border}}>
-        <div style={{display:'flex', flexDirection:'column', gap: '15px'}}>
-            <div style={filterRow}>
-                <div style={filterGroup}>
-                    <div style={{...searchContainer, backgroundColor: theme.bg, borderColor: theme.border}}>
-                        <Search size={16} color={theme.textSecondary} />
-                        <input type="text" placeholder="Unidade ou Placa..." style={{...searchInput, color: theme.text, width: '150px'}} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                    </div>
-                    {blocosDisponiveis.map(b => (<button key={b} className={`filter-pill ${filterBloco === b ? 'active' : ''}`} onClick={() => setFilterBloco(b)}>{b === "Todos" ? "Todos Blocos" : `B${b}`}</button>))}
-                </div>
-            </div>
-            <div style={filterRow}>
-                <div style={pillContainer}>
-                    <span style={{...filterMiniLabel, color: theme.textSecondary}}>Tag:</span>
-                    {["Todos", "Sem Tag", "Solicitado", "Disponivel", "Aplicado"].map(s => (
-                        <button key={s} className={`filter-pill ${filterTagStatus === s ? 'active' : ''}`} onClick={() => setFilterTagStatus(s)}>{s}</button>
-                    ))}
-                </div>
-                <div style={pillContainer}>
-                    <span style={{...filterMiniLabel, color: theme.textSecondary}}>Veículo:</span>
-                    {["Todos", "Carro", "Moto"].map(v => (
-                        <button key={v} className={`filter-pill ${filterVeiculo === v ? 'active' : ''}`} onClick={() => setFilterVeiculo(v)}>{v}</button>
-                    ))}
-                </div>
-            </div>
+      <div style={pillContainer}>
+        <span style={{...filterMiniLabel, color: theme.textSecondary}}>Veículo:</span>
+        <div style={{display:'flex', gap:'5px'}}>
+          {["Todos", "Carro", "Moto"].map(v => (
+            <button key={v} className={`filter-pill ${filterVeiculo === v ? 'active' : ''}`} onClick={() => setFilterVeiculo(v)}>{v}</button>
+          ))}
         </div>
       </div>
+    </div>
 
-      <div style={{...tableCard, backgroundColor: theme.mainBg, borderColor: theme.border}}>
-        <table style={tableStyle}>
-          <thead>
-  <tr style={{...thRow, borderBottomColor: theme.border, backgroundColor: theme.isDark ? '#1e293b' : '#f8fafc'}}>
-    <th style={thStyle}>Unidade</th>
-    <th style={thStyle}>Veículos</th>
-    <th style={thStyle}>Veículo / Placas</th>
-    <th style={thStyle}>Observações</th>
-    <th style={thStyle}>Tag de Acesso</th>
-    <th style={thStyle}>Status</th>
-    <th style={{...thStyle, textAlign: 'right'}}>Ações</th>
-  </tr>
-</thead>
-          <tbody>
-  {unidadesExibidas.map((v) => {
-    const unit = unidades.find(u => u.id?.toString() === v.id_unidade?.toString());
-    return (
-      <tr key={v.id} style={{ ...trStyle, borderBottom: `1px solid ${theme.border}` }}>
-        {/* 1. UNIDADE */}
-        <td style={{ ...tdStyle, color: theme.text }}>
-          <strong>{unit ? `B${unit.bloco} - ${unit.unidade}` : v.id_unidade}</strong>
-        </td>
-
-        {/* 2. ÍCONES VEÍCULOS */}
-        <td style={tdStyle}>
-          <div style={{ display: "flex", gap: "12px" }}>
-            {v.possui_carro === "Sim" && <Car size={20} color="#0ea5e9" />}
-            {v.possui_moto === "Sim" && <Bike size={20} color="#f59e0b" />}
-          </div>
-        </td>
-
-        {/* 3. MODELO / PLACA */}
-        <td style={{ ...tdStyle, color: theme.textSecondary, fontSize: '12px' }}>
-          {v.possui_carro === "Sim" && <div>{v.modelo_carro} | <strong>{v.placa_carro}</strong></div>}
-          {v.possui_moto === "Sim" && <div>{v.modelo_moto} | <strong>{v.placa_moto}</strong></div>}
-        </td>
-
-        {/* 4. OBSERVAÇÕES */}
-        <td style={{ ...tdStyle, color: theme.textSecondary, fontSize: '12px', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {v.observacoes || "-"}
-        </td>
-
-        {/* 5. COLUNA TAG DE ACESSO */}
-        <td style={tdStyle}>{getTagStatusBadge(v.id_unidade)}</td>
-
-        {/* 6. COLUNA STATUS (OS BADGES REDONDOS) */}
-        <td style={tdStyle}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-            {v.possui_carro === "Sim" && (
-              <span style={v.status_carro === 'Ativo' ? badgeGreen : badgeRed}>
-                Carro: {v.status_carro || 'Ativo'}
-              </span>
-            )}
-            {v.possui_moto === "Sim" && (
-              <span style={v.status_moto === 'Ativo' ? badgeGreen : badgeRed}>
-                Moto: {v.status_moto || 'Ativo'}
-              </span>
-            )}
-            {v.possui_carro !== "Sim" && v.possui_moto !== "Sim" && <span style={{ color: theme.textSecondary }}>-</span>}
-          </div>
-        </td>
-
-        {/* 7. COLUNA AÇÕES (NO FINAL) */}
-        <td style={{ ...tdStyle, textAlign: 'right', position: 'relative' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px' }}>
-            <Eye size={18} color="#3b82f6" cursor="pointer" onClick={() => { setSelectedVaga(v); setShowViewModal(true); }} />
-            <button onClick={() => setShowMenuId(showMenuId === v.id ? null : v.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-              <MoreVertical size={20} color={theme.textSecondary} />
-            </button>
-          </div>
-
-          {showMenuId === v.id && (
-            <div ref={menuRef} className="action-menu">
-              <div className="menu-item" onClick={() => { setModalType("edit"); setFormData(v); setShowModal(true); setShowMenuId(null); }}>
-                <Edit2 size={14} /> Editar
-              </div>
-              <div className="menu-item" style={{ color: '#ef4444' }} onClick={() => { handleDelete(v.id); setShowMenuId(null); }}>
-                <Trash2 size={14} /> Excluir
-              </div>
-            </div>
-          )}
-        </td>
-      </tr>
-    );
-  })}
-</tbody>
-        </table>
-        <div style={{...paginationFooter, backgroundColor: theme.isDark ? '#1e293b' : '#fcfcfc', borderTopColor: theme.border}}>
-            <div style={{display:'flex', alignItems:'center', gap:'10px', fontSize:'13px', color: theme.text}}>
-                Exibir: <select style={{...selectPageSize, backgroundColor: theme.bg, color: theme.text, borderColor: theme.border}} value={itemsPerPage} onChange={(e) => {setItemsPerPage(e.target.value === "Todos" ? "Todos" : Number(e.target.value)); setCurrentPage(1);}}>
-                    {[10, 20, 50, 100].map(v => <option key={v} value={v}>{v}</option>)}
-                    <option value="Todos">Todos</option>
-                </select> de {dadosFiltrados.length} registros
-            </div>
-            <div style={{display:'flex', alignItems:'center', gap:'15px', color: theme.text}}>
-                <button className="pagination-btn" disabled={currentPage === 1} onClick={() => { setCurrentPage(prev => prev - 1); window.scrollTo(0,0); }}><ChevronLeft size={18} /></button>
-                <span style={{fontSize:'13px', fontWeight:'600'}}>{currentPage} / {totalPages || 1}</span>
-                <button className="pagination-btn" disabled={currentPage === totalPages || itemsPerPage === "Todos"} onClick={() => { setCurrentPage(prev => prev + 1); window.scrollTo(0,0); }}><ChevronRight size={18} /></button>
-            </div>
-        </div>
+    {/* NO DESKTOP OS BOTÕES CONTINUAM AQUI SE NECESSÁRIO, OU APENAS NO TOPO */}
+    {!isMobile && (
+      <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+         <button style={{...btnNew, backgroundColor: '#8b5cf6'}} onClick={() => setShowTagsModal(true)}><Tag size={18} /> TAGs</button>
+         <button style={btnNew} onClick={() => { setModalType("add"); setFormData({/*...*/}); setShowModal(true); }}><Plus size={18} /> Nova Vaga</button>
       </div>
+    )}
+  </div>
+</div>
 
-      {/* --- MODAL DE EXPORTAÇÃO ESTILO MORADORES --- */}
-      {showExportModal && (
-        <div style={modalOverlay}>
-          <div style={{...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth: '400px'}}>
-            <div style={modalHeader}>
-              <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                <FileText color="#ef4444" size={24} />
-                <h3 style={{margin:0}}>Exportar PDF</h3>
-              </div>
-              <X size={20} cursor="pointer" onClick={() => setShowExportModal(false)} />
-            </div>
-            <p style={{fontSize:'13px', color: theme.textSecondary, marginBottom:'20px'}}>
-              Selecione as colunas que deseja incluir no relatório PDF:
-            </p>
-            <div style={{display:'flex', flexDirection:'column', gap:'10px', marginBottom:'25px'}}>
-              {exportOptions.map(opt => (
-                <div key={opt.id} onClick={() => toggleColumn(opt.id)}
-                  style={{
-                    display:'flex', alignItems:'center', gap:'12px', padding:'12px', borderRadius:'10px', cursor:'pointer', border: '1px solid',
-                    borderColor: selectedCols.includes(opt.id) ? '#3b82f6' : theme.border,
-                    backgroundColor: selectedCols.includes(opt.id) ? (theme.isDark ? '#1e3a8a' : '#eff6ff') : 'transparent'
+      <div style={{...tableCard, backgroundColor: theme.mainBg, borderColor: theme.border, overflow: 'hidden'}}>
+  
+  {/* CONTAINER COM SCROLL LATERAL APENAS NO MOBILE */}
+  <div style={{ 
+    width: '100%', 
+    overflowX: isMobile ? 'auto' : 'visible', 
+    WebkitOverflowScrolling: 'touch' 
+  }}>
+    <table style={{ 
+      ...tableStyle, 
+      minWidth: isMobile ? '900px' : '100%', // Mantém espaço para todas as colunas no mobile
+      borderCollapse: 'collapse'
+    }}>
+      <thead>
+        <tr style={{...thRow, borderBottomColor: theme.border, backgroundColor: theme.isDark ? '#1e293b' : '#f8fafc'}}>
+          <th style={thStyle}>Unidade</th>
+          <th style={thStyle}>Veículos</th>
+          <th style={thStyle}>Veículo / Placas</th>
+          <th style={thStyle}>Observações</th>
+          <th style={thStyle}>Tag de Acesso</th>
+          <th style={thStyle}>Status</th>
+          <th style={{...thStyle, textAlign: 'right'}}>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {unidadesExibidas.map((v, idx) => {
+          const unit = unidades.find(u => u.id?.toString() === v.id_unidade?.toString());
+          return (
+            <tr key={v.id} style={{ ...trStyle, borderBottom: `1px solid ${theme.border}` }}>
+              <td style={{ ...tdStyle, color: theme.text }}>
+                <strong>{unit ? `B${unit.bloco} - ${unit.unidade}` : v.id_unidade}</strong>
+              </td>
+
+              <td style={tdStyle}>
+                <div style={{ display: "flex", gap: "12px" }}>
+                  {v.possui_carro === "Sim" && <Car size={20} color="#0ea5e9" />}
+                  {v.possui_moto === "Sim" && <Bike size={20} color="#f59e0b" />}
+                </div>
+              </td>
+
+              <td style={{ ...tdStyle, color: theme.textSecondary, fontSize: '12px' }}>
+                {v.possui_carro === "Sim" && <div>{v.modelo_carro} | <strong>{v.placa_carro}</strong></div>}
+                {v.possui_moto === "Sim" && <div>{v.modelo_moto} | <strong>{v.placa_moto}</strong></div>}
+              </td>
+
+              <td style={{ ...tdStyle, color: theme.textSecondary, fontSize: '12px', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {v.observacoes || "-"}
+              </td>
+
+              <td style={tdStyle}>{getTagStatusBadge(v.id_unidade)}</td>
+
+              <td style={tdStyle}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  {v.possui_carro === "Sim" && (
+                    <span style={v.status_carro === 'Ativo' ? badgeGreen : badgeRed}>
+                      Carro: {v.status_carro || 'Ativo'}
+                    </span>
+                  )}
+                  {v.possui_moto === "Sim" && (
+                    <span style={v.status_moto === 'Ativo' ? badgeGreen : badgeRed}>
+                      Moto: {v.status_moto || 'Ativo'}
+                    </span>
+                  )}
+                  {v.possui_carro !== "Sim" && v.possui_moto !== "Sim" && <span style={{ color: theme.textSecondary }}>-</span>}
+                </div>
+              </td>
+
+              <td style={{ ...tdStyle, textAlign: 'right', position: 'relative' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px' }}>
+                  <Eye size={18} color="#3b82f6" cursor="pointer" onClick={() => { setSelectedVaga(v); setShowViewModal(true); }} />
+                  <button onClick={() => setShowMenuId(showMenuId === v.id ? null : v.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                    <MoreVertical size={20} color={theme.textSecondary} />
+                  </button>
+                </div>
+
+                {showMenuId === v.id && (
+                  <div ref={menuRef} className="action-menu" style={{ 
+                    top: idx > unidadesExibidas.length - 3 && unidadesExibidas.length > 3 ? 'auto' : '10px', 
+                    bottom: idx > unidadesExibidas.length - 3 && unidadesExibidas.length > 3 ? '10px' : 'auto',
+                    right: '10px',
+                    zIndex: 100
                   }}>
-                  {selectedCols.includes(opt.id) ? <CheckSquare size={20} color="#3b82f6" /> : <Square size={20} color={theme.textSecondary} />}
-                  <span style={{fontSize:'14px', fontWeight: selectedCols.includes(opt.id) ? '600' : '400'}}>{opt.label}</span>
-                </div>
-              ))}
-            </div>
-            <div style={{display:'flex', gap:'10px'}}>
-              <button style={{...btnNew, flex:1, backgroundColor:'#ef4444'}} onClick={exportToPDF}>Gerar PDF</button>
-              <button style={{...btnNew, flex:1, backgroundColor:'#94a3b8'}} onClick={() => setShowExportModal(false)}>Cancelar</button>
-            </div>
-          </div>
-        </div>
-      )}
+                    <div className="menu-item" onClick={() => { setModalType("edit"); setFormData(v); setShowModal(true); setShowMenuId(null); }}>
+                      <Edit2 size={14} /> Editar
+                    </div>
+                    <div className="menu-item" style={{ color: '#ef4444' }} onClick={() => { handleDelete(v.id); setShowMenuId(null); }}>
+                      <Trash2 size={14} /> Excluir
+                    </div>
+                  </div>
+                )}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+
+  {/* RODAPÉ RESPONSIVO */}
+  <div style={{
+    ...paginationFooter, 
+    backgroundColor: theme.isDark ? '#1e293b' : '#fcfcfc', 
+    borderTopColor: theme.border,
+    flexDirection: isMobile ? 'column' : 'row',
+    gap: isMobile ? '15px' : '0',
+    padding: isMobile ? '15px' : '10px 24px',
+    height: 'auto'
+  }}>
+    <div style={{display:'flex', alignItems:'center', gap:'10px', fontSize:'13px', color: theme.text}}>
+      Exibir: 
+      <select 
+        style={{...selectPageSize, backgroundColor: theme.bg, color: theme.text, borderColor: theme.border}} 
+        value={itemsPerPage} 
+        onChange={(e) => {setItemsPerPage(e.target.value === "Todos" ? "Todos" : Number(e.target.value)); setCurrentPage(1);}}
+      >
+        {[10, 20, 50, 100].map(v => <option key={v} value={v}>{v}</option>)}
+        <option value="Todos">Todos</option>
+      </select> de {dadosFiltrados.length} registros
+    </div>
+    
+    <div style={{display:'flex', alignItems:'center', gap:'15px', color: theme.text}}>
+      <button 
+        className="pagination-btn" 
+        disabled={currentPage === 1} 
+        onClick={() => { setCurrentPage(prev => prev - 1); window.scrollTo(0,0); }}
+        style={{ background: 'none', border: 'none', cursor: currentPage === 1 ? 'default' : 'pointer', opacity: currentPage === 1 ? 0.3 : 1, color: theme.text }}
+      >
+        <ChevronLeft size={18} />
+      </button>
+      
+      <span style={{fontSize:'13px', fontWeight:'600'}}>{currentPage} / {totalPages || 1}</span>
+      
+      <button 
+        className="pagination-btn" 
+        disabled={currentPage === totalPages || itemsPerPage === "Todos"} 
+        onClick={() => { setCurrentPage(prev => prev + 1); window.scrollTo(0,0); }}
+        style={{ background: 'none', border: 'none', cursor: (currentPage === totalPages || itemsPerPage === "Todos") ? 'default' : 'pointer', opacity: (currentPage === totalPages || itemsPerPage === "Todos") ? 0.3 : 1, color: theme.text }}
+      >
+        <ChevronRight size={18} />
+      </button>
+    </div>
+  </div>
+</div>
 
       {/* MODAL TAGS */}
       {showTagsModal && (
