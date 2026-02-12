@@ -14,7 +14,7 @@ import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 
 const API_URL = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8epZMJIhCmapSOxyTegLMSEGZ2jBMGIxQ4cJb4a23oveAAaW/exec";
-const TOKEN = "NOV0CR818";
+const TOKEN = import.meta.env.VITE_SHEETS_TOKEN;
 
 export default function Vagas({ user }) {
   const { theme } = useTheme();
@@ -300,23 +300,34 @@ const btnWhite = {
 };
 
   const executeDelete = async (id, sheetName) => {
-    setLoadingGlobal(true);
-    try {
-      await fetch(API_URL, {
-        method: "POST", mode: 'no-cors',
-        body: JSON.stringify({ token: TOKEN, action: "delete", sheet: sheetName, id: id.toString() })
-      });
-      setTimeout(() => {
-        fetchData();
-        setLoadingGlobal(false);
-        setShowMenuId(null);
-        setShowTagMenuId(null);
-      }, 1500);
-    } catch (error) {
-      console.error("Erro ao deletar:", error);
+  setLoadingGlobal(true);
+  try {
+    // Removido o mode: 'no-cors' para o Apps Script conseguir ler o JSON
+    const response = await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify({ 
+        token: TOKEN, 
+        action: "delete", 
+        sheet: sheetName, 
+        id: id.toString(),
+        user: user?.nome || "Sistema" // Adicionado para manter o log
+      })
+    });
+
+    // Como o fetch para Apps Script pode dar erro de redirecionamento (CORS), 
+    // aguardamos um pouco e atualizamos os dados
+    setTimeout(() => {
+      fetchData();
       setLoadingGlobal(false);
-    }
-  };
+      setShowMenuId(null);
+      setShowTagMenuId(null);
+    }, 1500);
+  } catch (error) {
+    console.error("Erro ao deletar:", error);
+    setLoadingGlobal(false);
+    alert("Erro ao tentar excluir. Verifique a conexão.");
+  }
+};
 
   const handleDelete = (id) => { if(confirm("Excluir esta vaga permanentemente?")) executeDelete(id, "VAGAS"); };
   const handleDeleteTag = (id) => { if(confirm("Excluir esta solicitação de TAG?")) executeDelete(id, "TAGS"); };
@@ -410,6 +421,7 @@ const btnWhite = {
       )}
 
       {/* HEADER DE TÍTULO E EXPORTAÇÃO */}
+{/* HEADER DE TÍTULO E EXPORTAÇÃO */}
 <div style={{
   ...headerStyle, 
   flexDirection: isMobile ? 'column' : 'row', 
@@ -423,14 +435,20 @@ const btnWhite = {
   
   <div style={{ 
     display: 'flex', 
-    flexDirection: 'column', // Empilha os grupos no mobile
+    flexDirection: 'column', 
     gap: '10px',
     width: isMobile ? '100%' : 'auto'
   }}>
-    {/* LINHA DE EXPORTAÇÃO E REDEFINIR */}
-    <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
+    <div style={{ 
+      display: 'flex', 
+      gap: '10px', 
+      width: '100%', 
+      justifyContent: isMobile ? 'flex-start' : 'flex-end',
+      flexWrap: isMobile ? 'wrap' : 'nowrap' 
+    }}>
       <button className="export-btn" style={{ flex: isMobile ? 1 : 'none' }} onClick={exportToExcel}><Download size={16} color="#10b981" /> XLSX</button>
       <button className="export-btn" style={{ flex: isMobile ? 1 : 'none' }} onClick={() => setShowExportModal(true)}><FileText size={16} color="#ef4444" /> PDF</button>
+      
       <button
         style={{
           ...btnWhite,
@@ -450,25 +468,25 @@ const btnWhite = {
       >
         <RotateCcw size={18} /> {isMobile ? "Limpar" : "Redefinir"}
       </button>
+
+      {!isMobile && (
+        <>
+          <button style={{...btnNew, backgroundColor: '#8b5cf6'}} onClick={() => setShowTagsModal(true)}>
+            <Tag size={18} /> TAGs
+          </button>
+          <button style={btnNew} onClick={() => { setModalType("add"); setFormData({id_unidade: "", possui_carro: "Não", placa_carro: "", modelo_carro: "", status_carro: "Ativo", possui_moto: "Não", placa_moto: "", modelo_moto: "", status_moto: "Ativo", observacoes: ""}); setShowModal(true); }}>
+            <Plus size={18} /> Nova Vaga
+          </button>
+        </>
+      )}
     </div>
 
-    {/* BOTÕES TAGS E NOVA VAGA - FICAM EM BAIXO NO MOBILE */}
     {isMobile && (
       <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
-        <button 
-          style={{...btnNew, backgroundColor: '#8b5cf6', flex: 1, justifyContent: 'center'}} 
-          onClick={() => setShowTagsModal(true)}
-        >
+        <button style={{...btnNew, backgroundColor: '#8b5cf6', flex: 1, justifyContent: 'center'}} onClick={() => setShowTagsModal(true)}>
           <Tag size={18} /> TAGs
         </button>
-        <button 
-          style={{...btnNew, flex: 1, justifyContent: 'center'}} 
-          onClick={() => { 
-            setModalType("add"); 
-            setFormData({id_unidade: "", possui_carro: "Não", placa_carro: "", modelo_carro: "", status_carro: "Ativo", possui_moto: "Não", placa_moto: "", modelo_moto: "", status_moto: "Ativo", observacoes: ""}); 
-            setShowModal(true); 
-          }}
-        >
+        <button style={{...btnNew, flex: 1, justifyContent: 'center'}} onClick={() => { setModalType("add"); setFormData({id_unidade: "", possui_carro: "Não", placa_carro: "", modelo_carro: "", status_carro: "Ativo", possui_moto: "Não", placa_moto: "", modelo_moto: "", status_moto: "Ativo", observacoes: ""}); setShowModal(true); }}>
           <Plus size={18} /> Nova Vaga
         </button>
       </div>
@@ -476,51 +494,90 @@ const btnWhite = {
   </div>
 </div>
 
-{/* FILTROS (REMOVIDO OS BOTÕES DAQUI PARA NÃO REPETIR NO MOBILE) */}
-<div style={{...filterCard, backgroundColor: theme.mainBg, borderColor: theme.border, padding: isMobile ? '15px' : '20px'}}>
-  <div style={{display:'flex', flexDirection:'column', gap: '15px'}}>
+{/* FILTROS */}
+<div style={{...filterCard, backgroundColor: theme.mainBg, borderColor: theme.border, padding: isMobile ? '15px' : '20px', marginTop: '20px'}}>
+  <div style={{display:'flex', flexDirection:'column', gap: '20px'}}>
     
-    <div style={{...filterRow, flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center'}}>
-      <div style={{...searchContainer, backgroundColor: theme.bg, borderColor: theme.border, width: isMobile ? '100%' : 'auto'}}>
+    {/* LINHA 1: BUSCA + BLOCOS (Lado a Lado) */}
+    <div style={{
+      display: 'flex', 
+      flexDirection: isMobile ? 'column' : 'row', 
+      alignItems: isMobile ? 'stretch' : 'center', 
+      gap: '15px'
+    }}>
+      {/* Container da Busca */}
+      <div style={{
+        ...searchContainer, 
+        backgroundColor: theme.bg, 
+        borderColor: theme.border, 
+        flex: isMobile ? 'none' : 1, // No desktop ele cresce para ocupar espaço
+        maxWidth: isMobile ? '100%' : '300px' // Limita a largura no desktop
+      }}>
         <Search size={16} color={theme.textSecondary} />
-        <input type="text" placeholder="Unidade ou Placa..." style={{...searchInput, color: theme.text, width: '100%'}} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+        <input 
+          type="text" 
+          placeholder="Unidade ou Placa..." 
+          style={{...searchInput, color: theme.text, width: '100%'}} 
+          value={searchTerm} 
+          onChange={(e) => setSearchTerm(e.target.value)} 
+        />
       </div>
       
-      <div style={{...filterGroup, flexWrap: 'wrap', marginTop: isMobile ? '5px' : '0'}}>
+      {/* Container dos Blocos */}
+      <div style={{display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap'}}>
+        <span style={{...filterMiniLabel, color: theme.textSecondary}}>Bloco:</span>
         {blocosDisponiveis.map(b => (
-          <button key={b} className={`filter-pill ${filterBloco === b ? 'active' : ''}`} onClick={() => setFilterBloco(b)}>
+          <button 
+            key={b} 
+            className={`filter-pill ${filterBloco === b ? 'active' : ''}`} 
+            onClick={() => setFilterBloco(b)}
+          >
             {b === "Todos" ? "Todos" : `B${b}`}
           </button>
         ))}
       </div>
     </div>
 
-    <div style={{...filterRow, flexDirection: isMobile ? 'column' : 'row', gap: '15px'}}>
+    {/* LINHA 2: TAG + VEÍCULO (Lado a Lado) */}
+    <div style={{
+      display: 'flex', 
+      flexDirection: isMobile ? 'column' : 'row', 
+      alignItems: isMobile ? 'stretch' : 'center', 
+      gap: '30px' // Espaço maior entre os dois grupos de filtro
+    }}>
+      {/* Grupo da TAG */}
       <div style={pillContainer}>
         <span style={{...filterMiniLabel, color: theme.textSecondary}}>Tag:</span>
         <div style={{display:'flex', gap:'5px', flexWrap: 'wrap'}}>
           {["Todos", "Sem Tag", "Solicitado", "Disponivel", "Aplicado"].map(s => (
-            <button key={s} className={`filter-pill ${filterTagStatus === s ? 'active' : ''}`} onClick={() => setFilterTagStatus(s)}>{s}</button>
+            <button 
+              key={s} 
+              className={`filter-pill ${filterTagStatus === s ? 'active' : ''}`} 
+              onClick={() => setFilterTagStatus(s)}
+            >
+              {s}
+            </button>
           ))}
         </div>
       </div>
+
+      {/* Grupo do VEÍCULO */}
       <div style={pillContainer}>
         <span style={{...filterMiniLabel, color: theme.textSecondary}}>Veículo:</span>
         <div style={{display:'flex', gap:'5px'}}>
           {["Todos", "Carro", "Moto"].map(v => (
-            <button key={v} className={`filter-pill ${filterVeiculo === v ? 'active' : ''}`} onClick={() => setFilterVeiculo(v)}>{v}</button>
+            <button 
+              key={v} 
+              className={`filter-pill ${filterVeiculo === v ? 'active' : ''}`} 
+              onClick={() => setFilterVeiculo(v)}
+            >
+              {v}
+            </button>
           ))}
         </div>
       </div>
     </div>
 
-    {/* NO DESKTOP OS BOTÕES CONTINUAM AQUI SE NECESSÁRIO, OU APENAS NO TOPO */}
-    {!isMobile && (
-      <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-         <button style={{...btnNew, backgroundColor: '#8b5cf6'}} onClick={() => setShowTagsModal(true)}><Tag size={18} /> TAGs</button>
-         <button style={btnNew} onClick={() => { setModalType("add"); setFormData({/*...*/}); setShowModal(true); }}><Plus size={18} /> Nova Vaga</button>
-      </div>
-    )}
   </div>
 </div>
 

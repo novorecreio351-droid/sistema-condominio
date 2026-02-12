@@ -132,7 +132,26 @@ export default function Sidebar({ active, setActive, user, onLogout }) {
 
           <p style={categoryTitle}>Agendamentos</p>
           <ul style={listStyle}>
-            {renderItem("Salão de Festas", CalendarDays)}
+            {/* O primeiro parâmetro é o ID que o App.jsx usa, o segundo é o Ícone, o terceiro é o nome que aparece na tela */}
+            <li
+  onClick={() => { setActive("Festas"); setMobileOpen(false); }} 
+  style={{
+    ...itemStyle,
+    backgroundColor: active === "Festas" ? (theme.isDark ? "#0369a133" : "#e0f2fe") : "transparent",
+    color: active === "Festas" ? (theme.isDark ? "#38bdf8" : "#0369a1") : theme.textSecondary,
+  }}
+  // ADICIONE ESTAS LINHAS ABAIXO:
+  onMouseEnter={(e) => { 
+    if (active !== "Festas") e.currentTarget.style.backgroundColor = theme.isDark ? "#334155" : "#f1f5f9"; 
+  }}
+  onMouseLeave={(e) => { 
+    if (active !== "Festas") e.currentTarget.style.backgroundColor = "transparent"; 
+  }}
+>
+  <span style={iconSpace}><CalendarDays size={18} strokeWidth={active === "Festas" ? 2.5 : 2} /></span>
+  Salão de Festas
+</li>
+            
             {renderItem("Churrasqueira", Flame)}
             {renderItem("Mudanças", Truck)}
           </ul>

@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard";
 import Unidades from "./pages/Unidades";
 import Moradores from "./pages/Moradores"; 
 import Vagas from "./pages/Vagas"; 
+import Festas from "./pages/Festas"; // Importação da nova página
 import SelecaoUsuario from "./pages/SelecaoUsuario";
 
 // 1. Criação do Contexto de Tema
@@ -73,11 +74,12 @@ export default function App() {
         />
 
         <main style={mainContent}>
-          {/* PASSAGEM DE USER PARA TODAS AS PÁGINAS QUE PRECISAM DE LOG */}
+          {/* ROTEAMENTO DAS PÁGINAS */}
           {activeTab === "Dashboard" && <Dashboard user={usuarioLogado} />}
           {activeTab === "Unidades" && <Unidades />}
           {activeTab === "Moradores" && <Moradores user={usuarioLogado} />}
           {activeTab === "Vagas" && <Vagas user={usuarioLogado} />}
+          {activeTab === "Festas" && <Festas user={usuarioLogado} />} 
         </main>
       </div>
     </ThemeContext.Provider>
