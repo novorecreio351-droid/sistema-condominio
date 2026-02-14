@@ -1795,7 +1795,7 @@ const itensExibidos = React.useMemo(() => {
     <input
     type="file"
     multiple
-    accept="image/*,application/pdf"
+    accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx"
     onChange={handleFileChange}
     style={{ display: 'none' }}
     id="file-upload"  /* O id deve ser exatamente igual ao htmlFor do label */
