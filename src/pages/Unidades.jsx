@@ -10,7 +10,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 
-const TOKEN = "NOV0CR818"; 
+const TOKEN = import.meta.env.VITE_SHEETS_TOKEN;
 const SHEETS_URL = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8epZMJIhCmapSOxyTegLMSEGZ2jBMGIxQ4cJb4a23oveAAaW/exec";
 
 export default function Unidades() {
@@ -227,9 +227,7 @@ React.useEffect(() => {
       }}>
         <div>
           <h1 style={{...titleStyle, color: theme.text}}>Unidades</h1>
-          <p style={{ margin: "4px 0 0 0", fontSize: "14px", color: theme.textSecondary }}>
-            Gerencie os blocos, apartamentos e o status de ocupação do condomínio.
-          </p>
+          
           <p style={{ margin: "8px 0 0 0", fontSize: "12px", color: theme.textSecondary }}>
             Logado como: <strong style={{ color: theme.text }}>{currentUser.nome}</strong>
           </p>

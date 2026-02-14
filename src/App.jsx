@@ -5,29 +5,33 @@ import Dashboard from "./pages/Dashboard";
 import Unidades from "./pages/Unidades";
 import Moradores from "./pages/Moradores"; 
 import Vagas from "./pages/Vagas"; 
-import Festas from "./pages/Festas"; // Importação da nova página
+import Festas from "./pages/Festas";
+import Churrasqueira from "./pages/Churrasqueira"; // ✅ NOVA PÁGINA
 import SelecaoUsuario from "./pages/SelecaoUsuario";
 
-// 1. Criação do Contexto de Tema
+// ================= CONTEXTO DE TEMA =================
 const ThemeContext = createContext();
 export const useTheme = () => useContext(ThemeContext);
 
 export default function App() {
+
+  // ================= USUÁRIO LOGADO =================
   const [usuarioLogado, setUsuarioLogado] = useState(() => {
     const salvo = localStorage.getItem("usuarioLogado");
     return salvo ? JSON.parse(salvo) : null;
   });
 
+  // ================= ABA ATIVA =================
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem("activeTab") || "Dashboard";
   });
 
-  // 2. Estado do Dark Mode
+  // ================= DARK MODE =================
   const [isDark, setIsDark] = useState(() => {
     return localStorage.getItem("darkMode") === "true";
   });
 
-  // Cores Dinâmicas
+  // ================= TEMA DINÂMICO =================
   const theme = {
     bg: isDark ? "#0f172a" : "#f8fafc",
     mainBg: isDark ? "#1e293b" : "#ffffff",
@@ -37,11 +41,13 @@ export default function App() {
     isDark
   };
 
+  // ================= SALVAR PREFERÊNCIAS =================
   useEffect(() => {
     localStorage.setItem("activeTab", activeTab);
     localStorage.setItem("darkMode", isDark);
   }, [activeTab, isDark]);
 
+  // ================= SALVAR USUÁRIO =================
   useEffect(() => {
     if (usuarioLogado) {
       localStorage.setItem("usuarioLogado", JSON.stringify(usuarioLogado));
@@ -59,13 +65,16 @@ export default function App() {
     setActiveTab("Dashboard");
   };
 
+  // ================= TELA DE LOGIN =================
   if (!usuarioLogado) {
     return <SelecaoUsuario onSelectUser={(user) => setUsuarioLogado(user)} />;
   }
 
+  // ================= APP PRINCIPAL =================
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
       <div style={{ ...appLayout, backgroundColor: theme.bg, color: theme.text }}>
+        
         <Sidebar 
           active={activeTab} 
           setActive={setActiveTab} 
@@ -74,19 +83,20 @@ export default function App() {
         />
 
         <main style={mainContent}>
-          {/* ROTEAMENTO DAS PÁGINAS */}
           {activeTab === "Dashboard" && <Dashboard user={usuarioLogado} />}
           {activeTab === "Unidades" && <Unidades />}
           {activeTab === "Moradores" && <Moradores user={usuarioLogado} />}
           {activeTab === "Vagas" && <Vagas user={usuarioLogado} />}
-          {activeTab === "Festas" && <Festas user={usuarioLogado} />} 
+          {activeTab === "Festas" && <Festas user={usuarioLogado} />}
+          {activeTab === "Churrasqueira" && <Churrasqueira user={usuarioLogado} />} 
         </main>
+
       </div>
     </ThemeContext.Provider>
   );
 }
 
-/* ================= ESTILOS ================= */
+// ================= ESTILOS =================
 const appLayout = {
   display: "flex",
   minHeight: "100vh",
