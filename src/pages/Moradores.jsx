@@ -10,7 +10,7 @@ import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
-const TOKEN = "NOV0CR818"; 
+const TOKEN = import.meta.env.VITE_SHEETS_TOKEN;
 const SHEETS_URL = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8epZMJIhCmapSOxyTegLMSEGZ2jBMGIxQ4cJb4a23oveAAaW/exec";
 
 
@@ -35,6 +35,7 @@ export default function Moradores() {
   const [filterVinculo, setFilterVinculo] = useState("Todos");
   const [filterStatus, setFilterStatus] = useState("Todos");
   const [filterBloco, setFilterBloco] = useState("Todos");
+  const [filterTipoMorador, setFilterTipoMorador] = useState("Todos");
   const [sortConfig, setSortConfig] = useState({ key: 'nome', direction: 'asc' });
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -54,6 +55,7 @@ export default function Moradores() {
     { id: 'nome', label: 'Nome', selected: true },
     { id: 'cpf', label: 'CPF', selected: true },
     { id: 'tipo_vinculo', label: 'Vínculo', selected: true },
+    { id: 'tipo_morador', label: 'Morador', selected: true },
     { id: 'telefone', label: 'Telefone', selected: true },
     { id: 'email', label: 'E-mail', selected: true },
     { id: 'status', label: 'Status', selected: true }
@@ -61,8 +63,8 @@ export default function Moradores() {
   
 
   const [formData, setFormData] = useState({ 
-    id: "", id_unidade: "", nome: "", cpf: "", tipo_vinculo: "Proprietário", 
-    telefone: "", email: "", data_entrada: "", data_saida: "", status: "Ativo" 
+    id: "", id_unidade: "", nome: "", cpf: "", tipo_vinculo: "Proprietário", tipo_morador: "Titular",
+    telefone: "", email: "", data_entrada: "", data_saida: "", status: "Ativo", rg: "" 
   });
 
   const menuRef = useRef(null);
@@ -146,6 +148,7 @@ export default function Moradores() {
   // --- FUNÇÃO SALVAR COM VALIDAÇÃO DE CPF ---
   const handleSave = async () => {
     if (!formData.nome || !formData.id_unidade) return alert("Preencha Nome e Unidade");
+
     
     // Limpar CPF para comparação
     const cpfLimpo = formData.cpf.replace(/\D/g, "");
@@ -186,11 +189,28 @@ export default function Moradores() {
   };
 
   const exportToExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(moradores);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Moradores");
-    XLSX.writeFile(wb, "Moradores.xlsx");
-  };
+  // Mapeia os dados para o formato amigável
+  const dadosFormatados = moradores.map(m => {
+    const u = unidadesExistentes.find(unit => String(unit.id) === String(m.id_unidade));
+    return {
+      "Unidade": u ? `B${u.bloco}-${u.unidade}` : m.id_unidade,
+      "Nome": m.nome,
+      "CPF": m.cpf,
+      "RG": m.rg || "",
+      "Vínculo": m.tipo_vinculo,
+      "Morador": m.tipo_morador || "Titular",
+      "Telefone": m.telefone,
+      "E-mail": m.email,
+      "Status": m.status,
+      "Data Entrada": m.data_entrada ? new Date(m.data_entrada).toLocaleDateString('pt-BR') : ""
+    };
+  });
+
+  const ws = XLSX.utils.json_to_sheet(dadosFormatados);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Moradores");
+  XLSX.writeFile(wb, "Moradores.xlsx");
+};
 
   const handleToggleColumn = (id) => {
     setSelectedColumns(prev => prev.map(col => col.id === id ? { ...col, selected: !col.selected } : col));
@@ -208,6 +228,8 @@ export default function Moradores() {
             const u = unidadesExistentes.find(unit => String(unit.id) === String(m.id_unidade));
             return u ? `B${u.bloco}-${u.unidade}` : m.id_unidade;
         }
+
+        if(c.id === 'tipo_morador') return m.tipo_morador || "Titular";
         return m[c.id] || "";
     }));
 
@@ -248,17 +270,18 @@ export default function Moradores() {
       String(m.cpf || "").replace(/\D/g, "").includes(termoApenasNumeros);
 
     const matchBusca = termoBusca === "" || matchNome || matchCPF;
-    const matchVinculo =
-      filterVinculo === "Todos" || m.tipo_vinculo === filterVinculo;
-    const matchStatus =
-      filterStatus === "Todos" || m.status === filterStatus;
+    const matchVinculo = filterVinculo === "Todos" || m.tipo_vinculo === filterVinculo;
+    const matchStatus = filterStatus === "Todos" || m.status === filterStatus;
 
-    // 🔥 NOVO FILTRO POR BLOCO
+    // 🔥 FILTRO DE TIPO DE MORADOR
+    const matchTipoMorador = 
+      filterTipoMorador === "Todos" || (m.tipo_morador || "Titular") === filterTipoMorador;
+
     const unidade = unidadesExistentes.find(u => u.id === m.id_unidade);
-    const matchBloco =
-      filterBloco === "Todos" || String(unidade?.bloco) === filterBloco;
+    const matchBloco = filterBloco === "Todos" || String(unidade?.bloco) === filterBloco;
 
-    return matchBusca && matchVinculo && matchStatus && matchBloco;
+    // Adicionado matchTipoMorador aqui embaixo:
+    return matchBusca && matchVinculo && matchStatus && matchBloco && matchTipoMorador;
 
   }).sort((a, b) => {
     let aVal = a[sortConfig.key] || "";
@@ -274,9 +297,10 @@ export default function Moradores() {
   searchNome,
   filterVinculo,
   filterStatus,
-  filterBloco,        // 👈 IMPORTANTE
+  filterTipoMorador, // Declarado no topo, agora acessível aqui
+  filterBloco,
   sortConfig,
-  unidadesExistentes  // 👈 IMPORTANTE
+  unidadesExistentes
 ]);
 
 const getContagemVeiculos = (idUnidadeMorador) => {
@@ -308,6 +332,30 @@ const getContagemVeiculos = (idUnidadeMorador) => {
   useEffect(() => { setCurrentPage(1); }, [searchNome, filterVinculo, filterStatus, filterBloco, itemsPerPage]);
 
   const unidadesDropdown = unidadesExistentes.filter(u => `${u.bloco}${u.unidade}`.includes(unitSearch.replace(/\D/g, "")));
+
+      const maskRG = (value) => {
+  if (!value) return "";
+  const str = String(value);
+  return str
+    .replace(/\D/g, "") // Remove tudo que não é dígito
+    .replace(/(\d{2})(\d)/, "$1.$2") // Coloca o primeiro ponto
+    .replace(/(\d{3})(\d)/, "$1.$2") // Coloca o segundo ponto
+    .replace(/(\d{3})(\d{1,2})/, "$1-$2") // Coloca o hífen
+    .replace(/(-\d{2})\d+?$/, "$1"); // Limita a 2 dígitos após o hífen
+};
+
+const formatToInputDate = (dateVal) => {
+  if (!dateVal) return "";
+  const date = new Date(dateVal);
+  // Verifica se a data é válida
+  if (isNaN(date.getTime())) return ""; 
+  // Retorna YYYY-MM-DD
+  return date.toISOString().split('T')[0];
+};
+
+const badgeTitular = { backgroundColor: '#e0f2fe', color: '#0284c7', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', border: '1px solid #0284c7' };
+const badgeDependente = { backgroundColor: '#f1f5f9', color: '#64748b', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', border: '1px solid #64748b' };
+const badgeNaoMorador = { backgroundColor: '#fef2f2', color: '#dc2626', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', border: '1px solid #dc2626' };
 
   return (
     <div style={pageContainer}>
@@ -384,10 +432,10 @@ tbody tr:last-child td {
     <button style={{...btnWhite, backgroundColor: theme.mainBg, borderColor: theme.border, color: theme.textSecondary, flex: isMobile ? '1 1 auto' : 'none'}} onClick={() => setShowExportModal(true)}>
       <FileText size={18} color="#b91c1c" /> PDF
     </button>
-    <button style={{...btnWhite, backgroundColor: theme.mainBg, borderColor: theme.border, color: theme.textSecondary, flex: isMobile ? '1 1 auto' : 'none'}} onClick={() => { setSearchNome(""); setFilterVinculo("Todos"); setFilterStatus("Todos"); }}>
+    <button style={{...btnWhite, backgroundColor: theme.mainBg, borderColor: theme.border, color: theme.textSecondary, flex: isMobile ? '1 1 auto' : 'none'}} onClick={() => { setSearchNome(""); setFilterVinculo("Todos"); setFilterStatus("Todos"); setFilterTipoMorador("Todos") }}>
       <RotateCcw size={18} /> Redefinir
     </button>
-    <button style={{...btnNew, flex: isMobile ? '1 1 100%' : 'none', justifyContent: 'center'}} onClick={() => { setModalType("add"); setUnitSearch(""); setFormData({id:"", id_unidade:"", nome:"", cpf:"", tipo_vinculo:"Proprietário", telefone:"", email:"", data_entrada:"", data_saida:"", status:"Ativo"}); setShowModal(true); }}>
+    <button style={{...btnNew, flex: isMobile ? '1 1 100%' : 'none', justifyContent: 'center'}} onClick={() => { setModalType("add"); setUnitSearch(""); setFormData({id:"", id_unidade:"", nome:"", cpf:"", rg:"", tipo_vinculo:"Proprietário", telefone:"", email:"", data_entrada:"", data_saida:"", status:"Ativo"}); setShowModal(true); }}>
       <Plus size={18} /> Novo Morador
     </button>
   </div>
@@ -445,6 +493,23 @@ tbody tr:last-child td {
         </div>
       </div>
 
+      {/* TIPO MORADOR */}
+<div style={{...pillContainer, flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: '8px'}}>
+  <span style={{...filterMiniLabel, color: theme.textSecondary, minWidth: '60px'}}>Morador:</span>
+  <div style={{display: 'flex', gap: '5px', flexWrap: 'wrap'}}>
+    {["Todos", "Titular", "Dependente", "Não Morador"].map(t => (
+      <button 
+        key={t} 
+        className={`filter-pill ${filterTipoMorador === t ? 'active' : ''}`} 
+        onClick={() => setFilterTipoMorador(t)} 
+        style={{padding: isMobile ? '4px 8px' : '6px 12px'}}
+      >
+        {t}
+      </button>
+    ))}
+  </div>
+</div>
+
       {/* BLOCO */}
       <div style={{...pillContainer, flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: '8px'}}>
         <span style={{...filterMiniLabel, color: theme.textSecondary, minWidth: '60px'}}>Bloco:</span>
@@ -477,36 +542,46 @@ tbody tr:last-child td {
       tableLayout: 'fixed'
     }}>
       <thead>
-        <tr style={{...thRow, borderBottomColor: theme.border}}>
-          {['id_unidade', 'nome', 'tipo_vinculo', 'contato', 'status'].map(key => (
-             <th key={key} style={{...thStyle, backgroundColor: theme.isDark ? '#1e293b' : '#f8fafc', color: theme.textSecondary}} onClick={() => setSortConfig({key: key === 'contato' ? 'telefone' : key, direction: sortConfig.direction === 'asc' ? 'desc' : 'asc'})}>
-                <div style={thFlex}>
-                  {key === 'id_unidade' ? 'Unidade' : key === 'tipo_vinculo' ? 'Vínculo' : key.charAt(0).toUpperCase() + key.slice(1)}
-                  {sortConfig.key === (key === 'contato' ? 'telefone' : key) && (sortConfig.direction === 'asc' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>)}
-                </div>
-             </th>
-          ))}
-          <th style={{ ...thStyle, backgroundColor: theme.isDark ? '#1e293b' : '#f8fafc', color: theme.textSecondary, textAlign: 'right' }}>Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        {moradoresExibidos.map((m, idx) => (
-          <tr key={m.id} style={{...trStyle, borderBottom: `1px solid ${theme.border}`}}>
-            <td style={{...tdStyle, color: theme.text}}><strong>{formatarIDExibicao(m.id_unidade)}</strong></td>
-            <td style={{...tdStyle, color: theme.text}}>
-              <div style={{fontWeight:'600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{m.nome}</div>
-              <div style={{fontSize:'11px', color: theme.textSecondary}}>{maskCPF(m.cpf)}</div>
-            </td>
-            <td style={tdStyle}>
-              <span style={m.tipo_vinculo === "Proprietário" ? badgeBlue : m.tipo_vinculo === "Locatário" ? badgeGreen : badgeOrange}>
-                {m.tipo_vinculo}
-              </span>
-            </td>
-            <td style={{...tdStyle, color: theme.text}}>
-              <div style={{display:'flex', alignItems:'center', gap: '5px', whiteSpace: 'nowrap'}}><Phone size={12}/> {maskPhone(m.telefone)}</div>
-              <div style={{fontSize:'12px', color: theme.textSecondary, whiteSpace: 'nowrap'}}>{m.email}</div>
-            </td>
-            <td style={tdStyle}><span style={m.status === "Ativo" ? badgeGreen : badgeRed}>{m.status}</span></td>
+  <tr style={{...thRow, borderBottomColor: theme.border}}>
+    {['id_unidade', 'nome', 'tipo_vinculo', 'contato', 'tipo_morador', 'status'].map(key => (
+       <th key={key} style={{...thStyle, backgroundColor: theme.isDark ? '#1e293b' : '#f8fafc', color: theme.textSecondary,}} onClick={() => setSortConfig({key: key === 'contato' ? 'telefone' : key, direction: sortConfig.direction === 'asc' ? 'desc' : 'asc'})}>
+          <div style={thFlex}>
+            {key === 'id_unidade' ? 'Unidade' : key === 'tipo_vinculo' ? 'Vínculo' : key === 'tipo_morador' ? 'Morador' : key.charAt(0).toUpperCase() + key.slice(1)}
+            {sortConfig.key === (key === 'contato' ? 'telefone' : key) && (sortConfig.direction === 'asc' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>)}
+          </div>
+       </th>
+    ))}
+    <th style={{ ...thStyle, backgroundColor: theme.isDark ? '#1e293b' : '#f8fafc', color: theme.textSecondary, textAlign: 'right' }}>Ações</th>
+  </tr>
+</thead>
+<tbody>
+  {moradoresExibidos.map((m, idx) => (
+    <tr key={m.id} style={{...trStyle, borderBottom: `1px solid ${theme.border}`}}>
+      <td style={{...tdStyle, color: theme.text}}><strong>{formatarIDExibicao(m.id_unidade)}</strong></td>
+      <td style={{...tdStyle, color: theme.text}}>
+        <div style={{fontWeight:'600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{m.nome}</div>
+        <div style={{fontSize:'11px', color: theme.textSecondary}}>{maskCPF(m.cpf)}</div>
+      </td>
+      <td style={tdStyle}>
+        <span style={m.tipo_vinculo === "Proprietário" ? badgeBlue : m.tipo_vinculo === "Locatário" ? badgeGreen : badgeOrange}>
+          {m.tipo_vinculo}
+        </span>
+      </td>
+      <td style={{...tdStyle, color: theme.text}}>
+        <div style={{display:'flex', alignItems:'center', gap: '5px', whiteSpace: 'nowrap'}}><Phone size={12}/> {maskPhone(m.telefone)}</div>
+        <div style={{fontSize:'12px', color: theme.textSecondary, whiteSpace: 'nowrap'}}>{m.email}</div>
+      </td>
+      {/* NOVA COLUNA MORADOR */}
+      <td style={tdStyle}>
+  <span style={
+    m.tipo_morador === "Titular" ? badgeTitular : 
+    m.tipo_morador === "Dependente" ? badgeDependente : 
+    badgeNaoMorador
+  }>
+    {m.tipo_morador || "Titular"}
+  </span>
+</td>
+      <td style={tdStyle}><span style={m.status === "Ativo" ? badgeGreen : badgeRed}>{m.status}</span></td>
             <td style={{ ...tdStyle, textAlign: 'right', position: 'relative' }}>
                 <div style={{display:'flex', justifyContent:'flex-end', gap:'10px'}}>
                     <button 
@@ -594,7 +669,21 @@ tbody tr:last-child td {
         <div className="view-row"><span className="view-label"><MapPin size={14}/> Unidade</span> <span className="view-value">{getUnitLabel(selectedMorador.id_unidade)}</span></div>
         <div className="view-row"><span className="view-label"><User size={14}/> Nome</span> <span className="view-value">{selectedMorador.nome}</span></div>
         <div className="view-row"><span className="view-label"><Hash size={14}/> CPF</span> <span className="view-value">{maskCPF(selectedMorador.cpf)}</span></div>
+        <div className="view-row">
+  <span className="view-label"><FileText size={14}/> RG</span> 
+  <span className="view-value">{formData.rg ? formData.rg : "Não informado"}</span>
+</div>
         <div className="view-row"><span className="view-label"><FileText size={14}/> Vínculo</span> <span className="view-value">{selectedMorador.tipo_vinculo}</span></div>
+        <div className="view-row">
+  <span className="view-label"><User size={14}/> Morador</span> 
+  <span style={
+    selectedMorador.tipo_morador === "Titular" ? badgeTitular : 
+    selectedMorador.tipo_morador === "Dependente" ? badgeDependente : 
+    badgeNaoMorador
+  }>
+    {selectedMorador.tipo_morador || "Titular"}
+  </span>
+</div>
         <div className="view-row"><span className="view-label"><Phone size={14}/> Telefone</span> <span className="view-value">{maskPhone(selectedMorador.telefone)}</span></div>
         <div className="view-row"><span className="view-label"><Mail size={14}/> E-mail</span> <span className="view-value">{selectedMorador.email || "Não informado"}</span></div>
         <div className="view-row"><span className="view-label"><Calendar size={14}/> Entrada</span> <span className="view-value">{selectedMorador.data_entrada ? new Date(selectedMorador.data_entrada).toLocaleDateString('pt-BR') : "-"}</span></div>
@@ -696,6 +785,7 @@ tbody tr:last-child td {
                   )}
                 </div>
               </div>
+              
 
               <div style={inputGroup}>
                 <label style={{...labelStyle, color: theme.textSecondary}}>Vínculo</label>
@@ -707,12 +797,26 @@ tbody tr:last-child td {
               </div>
 
               <div style={inputGroup}>
+  <label style={{...labelStyle, color: theme.textSecondary}}>Tipo de Morador</label>
+  <select 
+    style={{...selectStyle, backgroundColor: theme.mainBg, color: theme.text, borderColor: theme.border}} 
+    value={formData.tipo_morador} 
+    onChange={(e) => setFormData({...formData, tipo_morador: e.target.value})}
+  >
+    <option value="Titular">Titular</option>
+    <option value="Dependente">Dependente</option>
+    <option value="Não Morador">Não Morador</option>
+  </select>
+</div>
+
+              <div style={inputGroup}>
                 <label style={{...labelStyle, color: theme.textSecondary}}>Status</label>
                 <select style={{...selectStyle, backgroundColor: theme.mainBg, color: theme.text, borderColor: theme.border}} value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})}>
                   <option value="Ativo">Ativo</option>
                   <option value="Inativo">Inativo</option>
                 </select>
               </div>
+              
 
               <div style={{...inputGroup, gridColumn: isMobile ? 'span 1' : 'span 2'}}>
                 <label style={{...labelStyle, color: theme.textSecondary}}>Nome Completo</label>
@@ -725,6 +829,17 @@ tbody tr:last-child td {
               </div>
 
               <div style={inputGroup}>
+  <label style={{...labelStyle, color: theme.textSecondary}}>RG</label>
+  <input 
+    type="text" 
+    placeholder="00.000.000-00" 
+    style={{...selectStyle, backgroundColor: theme.mainBg, color: theme.text, borderColor: theme.border}} 
+    value={formData.rg} 
+    onChange={(e) => setFormData({...formData, rg: maskRG(e.target.value)})} 
+  />
+</div>
+
+              <div style={inputGroup}>
                 <label style={{...labelStyle, color: theme.textSecondary}}>Telefone</label>
                 <input type="text" placeholder="(00) 00000-0000" style={{...selectStyle, backgroundColor: theme.mainBg, color: theme.text, borderColor: theme.border}} value={formData.telefone} onChange={(e) => setFormData({...formData, telefone: maskPhone(e.target.value)})} />
               </div>
@@ -735,16 +850,28 @@ tbody tr:last-child td {
               </div>
 
               <div style={inputGroup}>
-                <label style={{...labelStyle, color: theme.textSecondary}}>Data Entrada</label>
-                <input type="date" style={{...selectStyle, backgroundColor: theme.mainBg, color: theme.text, borderColor: theme.border}} value={formData.data_entrada} onChange={(e) => setFormData({...formData, data_entrada: e.target.value})} />
-              </div>
+  <label style={{...labelStyle, color: theme.textSecondary}}>Data Entrada</label>
+  <input 
+    type="date" 
+    style={{...selectStyle, backgroundColor: theme.mainBg, color: theme.text, borderColor: theme.border}} 
+    // Alterado aqui:
+    value={formatToInputDate(formData.data_entrada)} 
+    onChange={(e) => setFormData({...formData, data_entrada: e.target.value})} 
+  />
+</div>
 
               {formData.tipo_vinculo !== "Proprietário" && (
-                <div style={inputGroup}>
-                  <label style={{...labelStyle, color: theme.textSecondary}}>Data Saída</label>
-                  <input type="date" style={{...selectStyle, backgroundColor: theme.mainBg, color: theme.text, borderColor: theme.border}} value={formData.data_saida} onChange={(e) => setFormData({...formData, data_saida: e.target.value})} />
-                </div>
-              )}
+  <div style={inputGroup}>
+    <label style={{...labelStyle, color: theme.textSecondary}}>Data Saída</label>
+    <input 
+      type="date" 
+      style={{...selectStyle, backgroundColor: theme.mainBg, color: theme.text, borderColor: theme.border}} 
+      // Alterado aqui:
+      value={formatToInputDate(formData.data_saida)} 
+      onChange={(e) => setFormData({...formData, data_saida: e.target.value})} 
+    />
+  </div>
+)}
             </div>
 
             {/* RODAPÉ DO MODAL */}

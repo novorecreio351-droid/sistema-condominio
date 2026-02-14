@@ -70,15 +70,8 @@ export default function Festas({ user }) {
   const [formData, setFormData] = useState({
     unidade_id: "", morador: "", contato: "", data_reserva: "",
     valor_taxa: "", pago: "Não", status: "Pendente", cpf: "", rg: "", convidados: "",
-    foto: "" 
+    foto: "" , churrasqueira: "",
   });
-
-  const maskRGPrivacy = (rg) => {
-  if (!rg) return "";
-  const clean = rg.replace(/\D/g, "");
-  if (clean.length < 5) return rg; 
-  return `${clean.substring(0, 2)}.***.***-${clean.slice(-1)}`;
-};
 
   const [filterPeriodo, setFilterPeriodo] = useState({ inicio: "", fim: "" });
   const [filterPago, setFilterPago] = useState("Todos");
@@ -100,6 +93,13 @@ const maskCPF = (v) => {
   v = v.replace(/\D/g, "");
   if (v.length > 11) v = v.slice(0, 11);
   return v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+};
+const maskRGPrivacy = (rg) => {
+  if (!rg) return "";
+  const clean = rg.replace(/\D/g, "");
+  if (clean.length < 5) return rg; 
+  // Exemplo: 12.***.***-X ou 12.***.*** (depende do tamanho)
+  return `${clean.substring(0, 2)}.***.***-${clean.slice(-1)}`;
 };
 
 const verificarEAtualizarStatus = async (listaFestas) => {
@@ -125,7 +125,7 @@ const verificarEAtualizarStatus = async (listaFestas) => {
         body: JSON.stringify({
           token: TOKEN,
           action: "edit",
-          sheet: "FESTAS",
+          sheet: "CHURRASQUEIRA",
           ...festa,
           status: "Realizado"
         }),
@@ -149,6 +149,7 @@ const maskPhone = (v) => {
   return v.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
 };
 
+const [filterChurrasqueira, setFilterChurrasqueira] = useState("Todos");
 
 
 const fileInputRef = useRef(null); // Adicione isso logo abaixo dos outros useStates
@@ -182,11 +183,11 @@ const formatDateTimeForInput = (dateTimeStr) => {
     try {
       setLoadingInitial(true);
       const [resFestas, resUnidades, resMoradores, resUploads] = await Promise.all([
-        fetch(`${API_URL}?token=${TOKEN}&sheet=FESTAS`).then(r => r.json()),
+        fetch(`${API_URL}?token=${TOKEN}&sheet=CHURRASQUEIRA`).then(r => r.json()),
         fetch(`${API_URL}?token=${TOKEN}&sheet=UNIDADES`).then(r => r.json()),
         fetch(`${API_URL}?token=${TOKEN}&sheet=MORADORES`).then(r => r.json()),
 
-        fetch(`${API_URL}?token=${TOKEN}&sheet=UPLOADS_FESTAS`).then(r => r.json()),
+        fetch(`${API_URL}?token=${TOKEN}&sheet=UPLOADS_CHURRASQUEIRA`).then(r => r.json()),
       ]);
 
       const listaFestas = Array.isArray(resFestas) ? resFestas : [];
@@ -215,6 +216,15 @@ const formatDateTimeForInput = (dateTimeStr) => {
     } catch (error) { console.error(error); }
     finally { setLoadingInitial(false); }
   };
+
+  const maskRG = (v) => {
+  v = v.replace(/\D/g, ""); // Remove tudo que não é número
+  if (v.length > 9) v = v.slice(0, 10); // Limita ao tamanho padrão de RG
+  
+  // Aplica a máscara 12.123.123-4
+  return v.replace(/(\d{2})(\d{3})(\d{3})(\d{1})/, "$1.$2.$3-$4");
+};
+  
   const gerarContratoPDF = (f) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -233,6 +243,7 @@ const formatDateTimeForInput = (dateTimeStr) => {
         }
     };
 
+    // Função ajustada para suportar alinhamento à ESQUERDA (natural) ou CENTRO
     const escreverFluxoMisto = (fragmentos, alinhamento = "left") => {
         let cursorX = margin;
         setNormal();
@@ -248,6 +259,7 @@ const formatDateTimeForInput = (dateTimeStr) => {
 
             palavras.forEach((palavra) => {
                 const largura = doc.getTextWidth(palavra);
+                // Quebra de linha se ultrapassar a margem
                 if (cursorX + largura > pageWidth - margin && palavra !== " ") {
                     cursorX = margin;
                     currentY += 7;
@@ -272,21 +284,22 @@ const formatDateTimeForInput = (dateTimeStr) => {
     doc.text("CONTRATO DE LOCAÇÃO E TERMO DE RESPONSABILIDADE", pageWidth / 2, currentY, { align: "center" });
     currentY += 8;
     doc.setFontSize(12);
-    doc.text("SALÃO DE FESTAS - CONDOMÍNIO NOVO RECREIO", pageWidth / 2, currentY, { align: "center" });
+    doc.text("CHURRASQUEIRA - CONDOMÍNIO NOVO RECREIO", pageWidth / 2, currentY, { align: "center" });
     currentY += 15;
 
-    // 3. TEXTO DE ABERTURA
+    // 3. TEXTO DE ABERTURA - JUSTIFICADO
     setNormal();
-    const intro = "A reserva do Salão de Festas, está autorizada para aniversários, chá de bebê, chá de cozinha. É expressamente proibido, para atividades políticas ou partidárias, religiosas, mercantis e jogos considerados de azar pela legislação pertinente.";
+    const intro = "A reserva da Churrasqueira, está autorizada para churrascos, aniversários, chá de bebê, chá de cozinha. É expressamente proibido, para atividades políticas ou partidárias, religiosas, mercantis e jogos considerados de azar pela legislação pertinente.";
     const linesIntro = doc.splitTextToSize(intro, contentWidth);
     doc.text(linesIntro, margin, currentY, { align: 'justify', maxWidth: contentWidth });
     currentY += (linesIntro.length * 6) + 10;
 
-    // 4. CORPO COM DADOS
+    // 4. CORPO COM DADOS - AGORA À ESQUERDA (SEM JUSTIFICAR)
     const uniStr = f.unidade_id.toString();
     const bloco = uniStr.charAt(0);
     const unidadeNum = uniStr.substring(1);
     const dataReserva = f.data_reserva ? f.data_reserva.split(' ')[0] : "___/___/___";
+    const churras = (f.churrasqueira || "___").toUpperCase();
 
     escreverFluxoMisto([
         { t: "Eu ", b: false },
@@ -299,28 +312,30 @@ const formatDateTimeForInput = (dateTimeStr) => {
         { t: unidadeNum, b: true },
         { t: " telefone ", b: false },
         { t: f.contato || "__________", b: true },
-        { t: " venho por intermédio deste solicitar a locação do Salão de Festas para o dia ", b: false },
+        { t: " venho por intermédio deste solicitar a locação da churrasqueira ", b: false },
+        { t: churras, b: true },
+        { t: " para o dia ", b: false },
         { t: dataReserva, b: true },
         { t: " mediante o pagamento no valor de ", b: false },
         { t: `R$ ${f.valor_taxa || "50,00"}`, b: true },
         { t: ", no ato da assinatura (via pix) deste que se refere a taxa de locação, manutenção, conservação e limpeza. Como responsável estou ciente dos meus deveres e obrigações conforme consta:", b: false }
-    ], "left");
+    ], "left"); // Forçado à esquerda para não bagunçar os espaços
 
     currentY += 2;
 
-    // 5. REGRAS
+    // 5. REGRAS - JUSTIFICADAS
     const regras = [
-        "1. Retirar e devolver as chaves do salão de festas devidamente trancadas, na portaria no mesmo dia do término da cessão.",
-        "2. Respeitar o horário para utilização do salão de festas (das 9:00 horas às 22:00 horas). Tolerância até as 23:00 horas;",
+        "1. Retirar e devolver as chaves da churrasqueira devidamente trancadas, na portaria no mesmo dia do término da cessão.",
+        "2. Respeitar o horário para utilização da churrasqueira (das 9:00 horas às 22:00 horas). Tolerância até as 23:00 horas;",
         "3. O uso dos aparelhos sonoros devem ser utilizados com moderação nesse período, em observância ao regulamento interno e na lei do silêncio (50 dB permitido);",
-        "4. Limpar o salão de festas, recolhendo todos os objetos que estiverem no chão, tais como copos plásticos, guardanapos, pratinhos e bexigas, entre outros, incluindo também a parte externa ao redor da mesma;",
+        "4. Limpar a churrasqueira, recolhendo todos os objetos que estiverem no chão, tais como copos plásticos, guardanapos, pratinhos e bexigas, entre outros, incluindo também a parte externa ao redor da mesma;",
         "5. Zelar por todos os materiais e acessórios para uso que estão à disposição nos banheiros;",
-        "6. Fazer uso apenas do salão de festas ciente de que a quadra e a piscina não estão inclusos na reserva (para visitantes);",
+        "6. Fazer uso apenas da churrasqueira ciente de que a quadra e a piscina não estão inclusos na reserva (para visitantes);",
         "7. Retirar barbantes, fios e etc..., que forem amarrados nos caibros;",
         "8. Não danificar as paredes usando pregos, colas e afins;",
-        "9. Respeitar o limite máximo de convidados 60 pessoas no salão de festas;",
+        "9. Respeitar o limite máximo de convidados 20 pessoas na churrasqueira;",
         "10. Guardar mesas e cadeiras no lugar determinado, ou seja, onde foram encontrados;",
-        "11. Convidados não poderão circular pelo condomínio, somente ao redor do salão de festas;",
+        "11. Convidados não poderão circular pelo condomínio, somente ao redor da churrasqueira;",
         "12. Carros de visitantes não podem entrar no condomínio;",
         "13. Deixar a lista de convidados um dia antes na portaria para não haver transtornos."
     ];
@@ -333,20 +348,22 @@ const formatDateTimeForInput = (dateTimeStr) => {
         currentY += (lines.length * 6) + 2.5;
     });
 
-    // 6. TERMO DE RESPONSABILIDADE
+    // 6. TERMO DE RESPONSABILIDADE - JUSTIFICADO
     currentY += 5;
     checkPageBreak(45);
-    const termo = "Estou ciente que, após a utilização será feita a vistoria e caso haja alguma irregularidade, serei responsabilizado pelos danos, inclusive os causados por familiares, convidados, prepostos, pessoal contratado e empregados, podendo sofrer sanções impostas pelo Condomínio através do Síndico e pelo Conselho Administrativo, pelos problemas detectados ou rompimento das regras posso sofrer punição (multa) ou até mesmo suspensão do uso do salão de festas de 3(três) meses a 1(um)ano. Caso haja algum reparo a ser feito o condomínio irá providenciar, onde o condômino acima assumirá o ônus que será cobrado junto com a cota condominial";
+    const termo = "Estou ciente que, após a utilização será feita a vistoria e caso haja alguma irregularidade, serei responsabilizado pelos danos, inclusive os causados por familiares, convidados, prepostos, pessoal contratado e empregados, podendo sofrer sanções impostas pelo Condomínio através do Síndico e pelo Conselho Administrativo, pelos problemas detectados ou rompimento das regras posso sofrer punição (multa) ou até mesmo suspensão do uso da churrasqueira de 3(três) meses a 1(um)ano. Caso haja algum reparo a ser feito o condomínio irá providenciar, onde o condômino acima assumirá o ônus que será cobrado junto com a cota condominial";
     const linesTermo = doc.splitTextToSize(termo, contentWidth);
     doc.text(linesTermo, margin, currentY, { align: 'justify', maxWidth: contentWidth });
     currentY += (linesTermo.length * 6) + 12;
 
-    // RECEBIMENTO DAS CHAVES
+    // RECEBIMENTO DAS CHAVES - CENTRALIZADO
     escreverFluxoMisto([
-        { t: "Após vistoria, estou recebendo a chave do salão de festa em perfeito estado", b: false }
+        { t: "Após vistoria, estou recebendo a chave da churrasqueira ", b: false },
+        { t: churras, b: true },
+        { t: " em perfeito estado", b: false }
     ], "center");
 
-    // 7. DATA
+    // 7. DATA FORMATADA
     currentY += 10;
     const data = new Date();
     const meses = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
@@ -369,7 +386,7 @@ const formatDateTimeForInput = (dateTimeStr) => {
     setBold();
     doc.text("OBS.:", margin, currentY);
     setNormal();
-    const obsText = `Ao receber as chaves para uso do Salão de festas , verificar se está tudo correto, sem danos e em perfeito estado. Caso haja alguma irregularidade, por favor, anotar abaixo neste termo.`;
+    const obsText = `Ao receber as chaves para uso da churrasqueira ${churras}, verificar se está tudo correto, sem danos e em perfeito estado. Caso haja alguma irregularidade, por favor, anotar abaixo neste termo.`;
     const linesObs = doc.splitTextToSize(obsText, contentWidth - 15);
     doc.text(linesObs, margin + 12, currentY);
     
@@ -377,9 +394,8 @@ const formatDateTimeForInput = (dateTimeStr) => {
     doc.setDrawColor(200);
     doc.line(margin, currentY, pageWidth - margin, currentY);
 
-    doc.save(`Contrato_Salao_${bloco}${unidadeNum}_${f.morador}.pdf`);
+    doc.save(`Contrato_${bloco}${unidadeNum}_${f.morador}.pdf`);
 };
-
 const gerarContratoVazio = () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -425,7 +441,7 @@ const gerarContratoVazio = () => {
         currentY += 10;
     };
 
-    // 1. LOGO
+    // 1. LOGO (Mantida conforme solicitado)
     try {
         doc.addImage('/logo.png', 'PNG', pageWidth / 2 - 25, currentY, 50, 25);
         currentY += 35;
@@ -437,17 +453,17 @@ const gerarContratoVazio = () => {
     doc.text("CONTRATO DE LOCAÇÃO E TERMO DE RESPONSABILIDADE", pageWidth / 2, currentY, { align: "center" });
     currentY += 8;
     doc.setFontSize(12);
-    doc.text("SALÃO DE FESTAS - CONDOMÍNIO NOVO RECREIO", pageWidth / 2, currentY, { align: "center" });
+    doc.text("CHURRASQUEIRA - CONDOMÍNIO NOVO RECREIO", pageWidth / 2, currentY, { align: "center" });
     currentY += 15;
 
     // 3. TEXTO DE ABERTURA
     setNormal();
-    const intro = "A reserva do Salão de Festas, está autorizada para aniversários, chá de bebê, chá de cozinha. É expressamente proibido, para atividades políticas ou partidárias, religiosas, mercantis e jogos considerados de azar pela legislação pertinente.";
+    const intro = "A reserva da Churrasqueira, está autorizada para churrascos, aniversários, chá de bebê, chá de cozinha. É expressamente proibido, para atividades políticas ou partidárias, religiosas, mercantis e jogos considerados de azar pela legislação pertinente.";
     const linesIntro = doc.splitTextToSize(intro, contentWidth);
     doc.text(linesIntro, margin, currentY, { align: 'justify', maxWidth: contentWidth });
     currentY += (linesIntro.length * 6) + 10;
 
-    // 4. CORPO COM CAMPOS VAZIOS (FLUXO MISTO)
+    // 4. CORPO COM CAMPOS PARA PREENCHER (LINHAS)
     escreverFluxoMisto([
         { t: "Eu ", b: false },
         { t: "___________________________________________", b: true },
@@ -459,7 +475,9 @@ const gerarContratoVazio = () => {
         { t: "____", b: true },
         { t: " telefone ", b: false },
         { t: "_________________", b: true },
-        { t: " venho por intermédio deste solicitar a locação do Salão de Festas para o dia ", b: false },
+        { t: " venho por intermédio deste solicitar a locação da churrasqueira ", b: false },
+        { t: "__________", b: true },
+        { t: " para o dia ", b: false },
         { t: "____/____/_______", b: true },
         { t: " mediante o pagamento no valor de ", b: false },
         { t: "R$ _________", b: true },
@@ -470,17 +488,17 @@ const gerarContratoVazio = () => {
 
     // 5. REGRAS
     const regras = [
-        "1. Retirar e devolver as chaves do salão de festas devidamente trancadas, na portaria no mesmo dia do término da cessão.",
-        "2. Respeitar o horário para utilização do salão de festas (das 9:00 horas às 22:00 horas). Tolerância até as 23:00 horas;",
+        "1. Retirar e devolver as chaves da churrasqueira devidamente trancadas, na portaria no mesmo dia do término da cessão.",
+        "2. Respeitar o horário para utilização da churrasqueira (das 9:00 horas às 22:00 horas). Tolerância até as 23:00 horas;",
         "3. O uso dos aparelhos sonoros devem ser utilizados com moderação nesse período, em observância ao regulamento interno e na lei do silêncio (50 dB permitido);",
-        "4. Limpar o salão de festas, recolhendo todos os objetos que estiverem no chão, tais como copos plásticos, guardanapos, pratinhos e bexigas, entre outros, incluindo também a parte externa ao redor da mesma;",
+        "4. Limpar a churrasqueira, recolhendo todos os objetos que estiverem no chão, tais como copos plásticos, guardanapos, pratinhos e bexigas, entre outros, incluindo também a parte externa ao redor da mesma;",
         "5. Zelar por todos os materiais e acessórios para uso que estão à disposição nos banheiros;",
-        "6. Fazer uso apenas do salão de festas ciente de que a quadra e a piscina não estão inclusos na reserva (para visitantes);",
+        "6. Fazer uso apenas da churrasqueira ciente de que a quadra e a piscina não estão inclusos na reserva (para visitantes);",
         "7. Retirar barbantes, fios e etc..., que forem amarrados nos caibros;",
         "8. Não danificar as paredes usando pregos, colas e afins;",
-        "9. Respeitar o limite máximo de convidados 60 pessoas no salão de festas;",
+        "9. Respeitar o limite máximo de convidados 20 pessoas na churrasqueira;",
         "10. Guardar mesas e cadeiras no lugar determinado, ou seja, onde foram encontrados;",
-        "11. Convidados não poderão circular pelo condomínio, somente ao redor do salão de festas;",
+        "11. Convidados não poderão circular pelo condomínio, somente ao redor da churrasqueira;",
         "12. Carros de visitantes não podem entrar no condomínio;",
         "13. Deixar a lista de convidados um dia antes na portaria para não haver transtornos."
     ];
@@ -496,17 +514,19 @@ const gerarContratoVazio = () => {
     // 6. TERMO DE RESPONSABILIDADE
     currentY += 5;
     checkPageBreak(45);
-    const termo = "Estou ciente que, após a utilização será feita a vistoria e caso haja alguma irregularidade, serei responsabilizado pelos danos, inclusive os causados por familiares, convidados, prepostos, pessoal contratado e empregados, podendo sofrer sanções impostas pelo Condomínio através do Síndico e pelo Conselho Administrativo, pelos problemas detectados ou rompimento das regras posso sofrer punição (multa) ou até mesmo suspensão do uso do salão de festas de 3(três) meses a 1(um)ano. Caso haja algum reparo a ser feito o condomínio irá providenciar, onde o condômino acima assumirá o ônus que será cobrado junto com a cota condominial";
+    const termo = "Estou ciente que, após a utilização será feita a vistoria e caso haja alguma irregularidade, serei responsabilizado pelos danos, inclusive os causados por familiares, convidados, prepostos, pessoal contratado e empregados, podendo sofrer sanções impostas pelo Condomínio através do Síndico e pelo Conselho Administrativo, pelos problemas detectados ou rompimento das regras posso sofrer punição (multa) ou até mesmo suspensão do uso da churrasqueira de 3(três) meses a 1(um)ano. Caso haja algum reparo a ser feito o condomínio irá providenciar, onde o condômino acima assumirá o ônus que será cobrado junto com a cota condominial";
     const linesTermo = doc.splitTextToSize(termo, contentWidth);
     doc.text(linesTermo, margin, currentY, { align: 'justify', maxWidth: contentWidth });
     currentY += (linesTermo.length * 6) + 12;
 
     // RECEBIMENTO DAS CHAVES
     escreverFluxoMisto([
-        { t: "Após vistoria, estou recebendo a chave do salão de festa em perfeito estado", b: false }
+        { t: "Após vistoria, estou recebendo a chave da churrasqueira ", b: false },
+        { t: "________", b: true },
+        { t: " em perfeito estado", b: false }
     ], "center");
 
-    // 7. DATA
+    // 7. DATA (Apenas Cidade e Ano fixos, dia/mês vazios para preencher)
     currentY += 10;
     const anoAtual = new Date().getFullYear();
     const dataTxt = `Rio de Janeiro, _____ de ____________________ de ${anoAtual}.`;
@@ -528,16 +548,61 @@ const gerarContratoVazio = () => {
     setBold();
     doc.text("OBS.:", margin, currentY);
     setNormal();
-    const obsText = `Ao receber as chaves para uso do Salão de festas , verificar se está tudo correto, sem danos e em perfeito estado. Caso haja alguma irregularidade, por favor, anotar abaixo neste termo.`;
+    const obsText = `Ao receber as chaves para uso da churrasqueira ______, verificar se está tudo correto, sem danos e em perfeito estado. Caso haja alguma irregularidade, por favor, anotar abaixo neste termo.`;
     const linesObs = doc.splitTextToSize(obsText, contentWidth - 15);
     doc.text(linesObs, margin + 12, currentY);
     
     currentY += (linesObs.length * 6) + 5;
     doc.setDrawColor(200);
-    doc.line(margin, currentY, pageWidth - margin, currentY);
+    doc.line(margin, currentY, pageWidth - margin, currentY); // Linha final para anotações manuais
 
-    doc.save(`Contrato_Salao_Vazio.pdf`);
+    doc.save(`Contrato_Modelo_Vazio.pdf`);
 };
+
+const getChurrasqueiraBadge = (valor) => {
+    // Transforma em texto, limpa espaços e coloca em maiúsculo (Ex: "ch-a " vira "CH-A")
+    const v = String(valor || "").trim().toUpperCase();
+
+    const estiloBase = {
+      padding: '4px 12px',
+      borderRadius: '20px',
+      fontSize: '11px',
+      fontWeight: '800',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minWidth: '60px',
+      border: '1px solid'
+    };
+
+    if (v === "CH-A") {
+      return {
+        ...estiloBase,
+        backgroundColor: '#dbeafe', // Azul claro
+        color: '#1e40af',           // Azul escuro
+        borderColor: '#bfdbfe'
+      };
+    } 
+    
+    if (v === "CH-B") {
+      return {
+        ...estiloBase,
+        backgroundColor: '#fee2e2', // Vermelho claro
+        color: '#b91c1c',           // Vermelho escuro
+        borderColor: '#fecaca'
+      };
+    }
+
+    // Cor padrão caso venha outro valor
+    return { 
+      ...estiloBase, 
+      backgroundColor: theme?.isDark ? '#334155' : '#f1f5f9', 
+      color: theme?.text || '#000',
+      borderColor: theme?.border || '#ccc' 
+    };
+  };
+
+
 const maskCPFPrivacy = (cpf) => {
   if (!cpf) return "";
   // Remove caracteres não numéricos
@@ -549,19 +614,12 @@ const maskCPFPrivacy = (cpf) => {
   return `${cleanCPF.substring(0, 3)}.***.***-${cleanCPF.substring(9)}`;
 };
 
-const maskRG = (v) => {
-  v = v.replace(/\D/g, ""); // Remove tudo que não é número
-  if (v.length > 9) v = v.slice(0, 10); // Limita ao tamanho padrão de RG
-  
-  // Aplica a máscara 12.123.123-4
-  return v.replace(/(\d{2})(\d{3})(\d{3})(\d{1})/, "$1.$2.$3-$4");
-};
-
 const [showExportModal, setShowExportModal] = useState(false);
 const [selectedColumns, setSelectedColumns] = useState([
   { id: 'data_reserva', label: 'Data', selected: true },
   { id: 'unidade_id', label: 'Unidade', selected: true },
   { id: 'morador', label: 'Morador', selected: true },
+  { id: 'churrasqueira', label: 'Churrasqueira', selected: true },
   { id: 'cpf', label: 'CPF', selected: true }, // Nova coluna adicionada
   { id: 'rg', label: 'RG', selected: true },
   { id: 'contato', label: 'Telefone', selected: true },
@@ -569,8 +627,6 @@ const [selectedColumns, setSelectedColumns] = useState([
   { id: 'pago', label: 'Pago', selected: true },
   { id: 'status', label: 'Status', selected: true }
 ]);
-
-
 
 const exportToExcel = () => {
   // 1. Filtra apenas as colunas que estão marcadas como 'selected: true' no modal
@@ -588,6 +644,14 @@ const exportToExcel = () => {
       else if (col.id === 'cpf') {
         linha["CPF"] = maskCPFPrivacy(f.cpf);
       } 
+      else if (col.id === 'rg') {
+  linha["RG"] = maskRGPrivacy(f.rg);
+}
+
+else if (col.id === 'churrasqueira') {
+        linha["Churrasqueira"] = f.churrasqueira || "";
+      }
+
       else if (col.id === 'morador') {
         linha["Responsável"] = f.morador;
       }
@@ -632,6 +696,7 @@ const exportToPDF = () => {
     if (clean.length < 11) return cpf;
     return `${clean.substring(0, 3)}.***.***-${clean.substring(9)}`;
   };
+  
 
   const colsParaExportar = selectedColumns.filter(c => c.selected);
   const headers = colsParaExportar.map(c => c.label);
@@ -665,7 +730,7 @@ const exportToPDF = () => {
     
     doc.setFontSize(18); 
     doc.setTextColor(30, 41, 59);
-    doc.text("Relatório de Reservas - Salão de Festas", 148, incluirLogo ? 45 : 25, { align: "center" });
+    doc.text("Relatório de Reservas - Churrasqueira", 148, incluirLogo ? 45 : 25, { align: "center" });
 
     autoTable(doc, {
       startY: incluirLogo ? 55 : 35,
@@ -760,7 +825,7 @@ const handleDeleteImage = async (uploadId) => {
       body: JSON.stringify({ 
         token: TOKEN, 
         action: "delete", 
-        sheet: "UPLOADS_FESTAS", 
+        sheet: "UPLOADS_CHURRASQUEIRA", 
         id: uploadId.toString()
       })
     });
@@ -815,6 +880,10 @@ const getFotosFestaInterno = (festaId, listaDeUploads) => {
     alert("O campo TAXA é obrigatório.");
     return;
   }
+  if (!formData.rg || formData.rg.trim() === "") {
+    alert("O campo RG é obrigatório.");
+    return;
+  }
 
   // 2. LÓGICA DE VALIDAÇÃO DE CONFLITO (Existente no seu código)
   const dataNova = formData.data_reserva.split("T")[0]; 
@@ -842,8 +911,8 @@ const getFotosFestaInterno = (festaId, listaDeUploads) => {
   const payload = { 
     token: TOKEN, 
     action: modalType === "add" ? "add" : "edit", 
-    sheet: "FESTAS", 
-    uploadSheet: "UPLOADS_FESTAS",
+    sheet: "CHURRASQUEIRA", 
+    uploadSheet: "UPLOADS_CHURRASQUEIRA",
     id: modalType === "add" ? Date.now().toString() : formData.id.toString(),
     ...formData,
     user: user?.nome || "Sistema",
@@ -893,7 +962,7 @@ const getFotosFestaInterno = (festaId, listaDeUploads) => {
             body: JSON.stringify({
               token: TOKEN,
               action: "delete",
-              sheet: "UPLOADS_FESTAS",
+              sheet: "UPLOADS_CHURRASQUEIRA",
               id: (anexo.id || anexo.ID).toString(),
               user: user?.nome || "Sistema"
             })
@@ -906,7 +975,7 @@ const getFotosFestaInterno = (festaId, listaDeUploads) => {
           body: JSON.stringify({
             token: TOKEN,
             action: "delete",
-            sheet: "FESTAS",
+            sheet: "CHURRASQUEIRA",
             id: id.toString()
           })
         });
@@ -937,7 +1006,7 @@ const getFotosFestaInterno = (festaId, listaDeUploads) => {
             morador: moradorObj.nome, 
             contato: moradorObj.telefone || "",
             cpf: moradorObj.cpf || "",
-            rg: moradorObj.rg || ""
+            rg: moradorObj.rg || "" // Adicionado para trazer o RG
         });
     }
   };
@@ -1144,7 +1213,7 @@ const itensExibidos = React.useMemo(() => {
 
       <div style={{...headerStyle, flexDirection: isMobile ? 'column' : 'row', gap: '15px', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between'}}>
   <div>
-    <h1 style={{...titleStyle, color: theme.text}}>Reservas de Salão</h1>
+    <h1 style={{...titleStyle, color: theme.text}}>Reservas de Churrasqueira</h1>
     <p style={{ margin: "4px 0 0 0", fontSize: "14px", color: theme.textSecondary }}>Gestão de eventos do condomínio.</p>
     <p style={{ margin: "8px 0 0 0", fontSize: "12px", color: theme.textSecondary }}>
             Logado como: <strong style={{ color: theme.text }}>
@@ -1173,11 +1242,18 @@ const itensExibidos = React.useMemo(() => {
     </button>
     
     <button 
-  style={{...btnWhite, backgroundColor: theme.mainBg, borderColor: theme.border, color: theme.textSecondary, flex: isMobile ? '1 1 auto' : 'none'}} 
+  style={{
+    ...btnWhite, 
+    backgroundColor: theme.mainBg, 
+    borderColor: theme.border, 
+    color: theme.textSecondary, 
+    flex: isMobile ? '1 1 auto' : 'none'
+  }} 
   onClick={() => {
     setSearchTerm("");
     setFilterStatus("Todos");
     setFilterPago("Todos");
+    setFilterChurrasqueira("Todos"); // <--- Adicionado aqui
     setFilterPeriodo({ inicio: "", fim: "" }); // Reseta o objeto de datas
     setCurrentPage(1); // Opcional: volta para a primeira página
   }}
@@ -1228,6 +1304,19 @@ const itensExibidos = React.useMemo(() => {
                     </button>
                 ))}
             </div>
+
+            {/* Filtro Churrasqueira (Estilo Pill - Igual ao solicitado) */}
+<div style={{ display: 'flex', gap: '8px' }}>
+  {["Todos", "CH-A", "CH-B"].map(c => (
+    <button 
+      key={c} 
+      className={`filter-pill ${filterChurrasqueira === c ? 'active' : ''}`} 
+      onClick={() => setFilterChurrasqueira(c)}
+    >
+      {c === "Todos" ? "Churrasqueira: Todas" : c}
+    </button>
+  ))}
+</div>
 
             {/* Filtro Período (Estilo Search Container) */}
 <div style={{
@@ -1310,6 +1399,7 @@ const itensExibidos = React.useMemo(() => {
                     <tr style={{...thRow, borderBottomColor: theme.border, backgroundColor: theme.isDark ? '#1e293b' : '#f8fafc'}}>
     {[
       { label: "Unidade", key: "unidade_id" },
+      { label: "Churrasqueira", key: "churrasqueira" },
       { label: "Morador", key: "morador" },
       { label: "Data/Hora", key: "data_reserva" },
       { label: "Valor", key: "valor_taxa" },
@@ -1338,7 +1428,17 @@ const itensExibidos = React.useMemo(() => {
                         const unit = unidades.find(u => u.id?.toString() === f.unidade_id?.toString());
                         return (
                             <tr key={f.id} style={{ ...trStyle, borderBottom: `1px solid ${theme.border}` }}>
-                                <td style={{ ...tdStyle, color: theme.text }}><strong>{unit ? `B${unit.bloco} - ${unit.unidade}` : f.unidade_id}</strong></td>
+  {/* Coluna Unidade */}
+  <td style={{ ...tdStyle, color: theme.text, textAlign: 'left' }}>
+    <strong>{unit ? `B${unit.bloco} - ${unit.unidade}` : f.unidade_id}</strong>
+  </td>
+
+  {/* Coluna Churrasqueira CENTRALIZADA */}
+  <td style={{ ...tdStyle, textAlign: 'left' }}>
+  <span style={getChurrasqueiraBadge(f.churrasqueira)}>
+    {f.churrasqueira}
+  </span>
+</td>
                                 <td style={{ ...tdStyle, color: theme.text }}>
   <div style={{ display: 'flex', flexDirection: 'column' }}>
     <span style={{ fontWeight: '600' }}>{f.morador}</span>
@@ -1561,7 +1661,7 @@ const itensExibidos = React.useMemo(() => {
 
         <div style={{ flex: 1 }}>
   <label style={labelStyle}>RG</label>
-  <input 
+ <input 
   style={{
     ...selectStyle,
     width: '100%', 
@@ -1627,6 +1727,20 @@ const itensExibidos = React.useMemo(() => {
             </select>
           </div>
         </div>
+
+        {/* NOVA SEÇÃO: CHURRASQUEIRA (ABAIXO DE PAGO) */}
+<div style={{marginTop: '5px'}}>
+  <label style={labelStyle}>Churrasqueira</label>
+  <select 
+    style={{...selectStyle, width:'100%', backgroundColor: theme.bg, color: theme.text, borderColor: theme.border}} 
+    value={formData.churrasqueira} 
+    onChange={e => setFormData({...formData, churrasqueira: e.target.value})}
+  >
+    <option value="">Selecione a Churrasqueira...</option>
+    <option value="CH-A">CH-A</option>
+    <option value="CH-B">CH-B</option>
+  </select>
+</div>
 
         {/* SEÇÃO DE ANEXOS / IMAGENS */}
         <div style={{ marginTop: '10px' }}>
@@ -1736,6 +1850,8 @@ const itensExibidos = React.useMemo(() => {
                 <span><strong>Pago:</strong> {selectedFesta.pago}</span>
                 <span><strong>Status:</strong> {selectedFesta.status}</span>
               </div>
+
+              
 
               {/* SEÇÃO DE ANEXOS / COMPROVANTES */}
               <div style={{...viewBox, backgroundColor: theme.bg, borderColor: theme.border}}>

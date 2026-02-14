@@ -18,6 +18,8 @@ const TOKEN = import.meta.env.VITE_SHEETS_TOKEN;
 
 export default function Vagas({ user }) {
   const { theme } = useTheme();
+
+  const [currentUser, setCurrentUser] = useState({ nome: "Sistema" });
   
   const [vagas, setVagas] = useState([]);
   const [unidades, setUnidades] = useState([]);
@@ -431,6 +433,11 @@ const btnWhite = {
   <div>
     <h1 style={{...titleStyle, color: theme.text}}>Gestão de Vagas</h1>
     <p style={{ margin: "4px 0 0 0", fontSize: "14px", color: theme.textSecondary }}>Monitoramento de veículos e acessos.</p>
+    <p style={{ margin: "8px 0 0 0", fontSize: "12px", color: theme.textSecondary }}>
+            Logado como: <strong style={{ color: theme.text }}>
+  {user?.nome || "Sistema"}
+</strong>
+          </p>
   </div>
   
   <div style={{ 

@@ -2,6 +2,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { 
   LayoutDashboard, 
+  PartyPopper,
+  FileX,
   Building2, 
   Users, 
   Car, 
@@ -9,11 +11,13 @@ import {
   CalendarDays, 
   Flame, 
   Truck, 
+  Wrench,
   CircleDollarSign, 
   FileText, 
   ShoppingCart,
   LogOut,
   Moon,
+  UsersRound,
   Sun
 } from "lucide-react";
 import { useTheme } from "../App"; 
@@ -26,7 +30,6 @@ export default function Sidebar({ active, setActive, user, onLogout }) {
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
-  // Atualiza estado de mobile quando redimensiona
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener("resize", handleResize);
@@ -43,7 +46,7 @@ export default function Sidebar({ active, setActive, user, onLogout }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const renderItem = (label, Icon) => {
+  const renderItem = (label, Icon, displayName = null) => {
     const isActive = active === label;
     const activeBg = theme.isDark ? "#0369a133" : "#e0f2fe";
     const activeText = theme.isDark ? "#38bdf8" : "#0369a1";
@@ -64,7 +67,7 @@ export default function Sidebar({ active, setActive, user, onLogout }) {
         <span style={iconSpace}>
           <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
         </span>
-        {label}
+        {displayName || label}
       </li>
     );
   };
@@ -73,7 +76,6 @@ export default function Sidebar({ active, setActive, user, onLogout }) {
 
   return (
     <>
-      {/* BOTÃO HAMBURGER */}
       {isMobile && (
         <div style={{ position: 'fixed', top: 16, left: 16, zIndex: 2000 }}>
           <button 
@@ -85,7 +87,6 @@ export default function Sidebar({ active, setActive, user, onLogout }) {
         </div>
       )}
 
-      {/* OVERLAY MOBILE */}
       {isMobile && mobileOpen && (
         <div 
           onClick={() => setMobileOpen(false)}
@@ -101,7 +102,6 @@ export default function Sidebar({ active, setActive, user, onLogout }) {
         />
       )}
 
-      {/* SIDEBAR */}
       <div style={{
         ...sidebarContainer,
         backgroundColor: theme.bg,
@@ -111,12 +111,15 @@ export default function Sidebar({ active, setActive, user, onLogout }) {
         top: 0,
         zIndex: isMobile ? 1500 : "auto",
       }}>
+
         {/* LOGO */}
         <div style={{ ...logoContainer, backgroundColor: theme.isDark ? "#0369a133" : "#e0f2fe" }}>
           <span style={logoIconStyle}>
             <Building2 size={22} color={theme.isDark ? "#38bdf8" : "#0369a1"} />
           </span>
-          <h2 style={{ ...logoText, color: theme.isDark ? "#38bdf8" : "#0369a1" }}>Novo Recreio</h2>
+          <h2 style={{ ...logoText, color: theme.isDark ? "#38bdf8" : "#0369a1" }}>
+            Novo Recreio
+          </h2>
         </div>
 
         {/* NAVEGAÇÃO */}
@@ -128,32 +131,16 @@ export default function Sidebar({ active, setActive, user, onLogout }) {
             {renderItem("Moradores", Users)}
             {renderItem("Vagas", Car)}
             {renderItem("Piscina", Waves)}
+            {renderItem("Manutenção", Wrench)}
+            {renderItem("Funcionários", UsersRound)}
           </ul>
 
           <p style={categoryTitle}>Agendamentos</p>
           <ul style={listStyle}>
-            {/* O primeiro parâmetro é o ID que o App.jsx usa, o segundo é o Ícone, o terceiro é o nome que aparece na tela */}
-            <li
-  onClick={() => { setActive("Festas"); setMobileOpen(false); }} 
-  style={{
-    ...itemStyle,
-    backgroundColor: active === "Festas" ? (theme.isDark ? "#0369a133" : "#e0f2fe") : "transparent",
-    color: active === "Festas" ? (theme.isDark ? "#38bdf8" : "#0369a1") : theme.textSecondary,
-  }}
-  // ADICIONE ESTAS LINHAS ABAIXO:
-  onMouseEnter={(e) => { 
-    if (active !== "Festas") e.currentTarget.style.backgroundColor = theme.isDark ? "#334155" : "#f1f5f9"; 
-  }}
-  onMouseLeave={(e) => { 
-    if (active !== "Festas") e.currentTarget.style.backgroundColor = "transparent"; 
-  }}
->
-  <span style={iconSpace}><CalendarDays size={18} strokeWidth={active === "Festas" ? 2.5 : 2} /></span>
-  Salão de Festas
-</li>
-            
-            {renderItem("Churrasqueira", Flame)}
+            {renderItem("Festas", PartyPopper, "Salão de Festas")}
+            {renderItem("Churrasqueira", Flame, "Churrasqueira")}
             {renderItem("Mudanças", Truck)}
+            {renderItem("Calendário", CalendarDays)}
           </ul>
 
           <p style={categoryTitle}>Gestão Financeira</p>
@@ -161,10 +148,11 @@ export default function Sidebar({ active, setActive, user, onLogout }) {
             {renderItem("Inadimplentes", CircleDollarSign)}
             {renderItem("Notas", FileText)}
             {renderItem("Compras", ShoppingCart)}
+            {renderItem("Multas", FileX)}
           </ul>
         </nav>
 
-        {/* PERFIL DO USUÁRIO */}
+        {/* PERFIL */}
         <div style={userProfile} ref={menuRef}>
           {showUserMenu && (
             <div style={{ ...floatingMenu, backgroundColor: theme.mainBg, borderColor: theme.border }}>
@@ -214,7 +202,7 @@ const sidebarContainer = {
   flexDirection: "column",
   boxSizing: "border-box",
   transition: "transform 0.3s ease",
-  overflow: "hidden" // evita que a barra de scroll quebre o layout
+  overflow: "hidden"
 };
 
 const logoContainer = {
@@ -232,7 +220,7 @@ const logoText = { fontSize: "18px", fontWeight: "700", margin: 0 };
 
 const navStyle = { 
   flex: 1,
-  overflowY: "auto", // permite scroll vertical quando necessário
+  overflowY: "auto",
   paddingRight: "4px"
 };
 
