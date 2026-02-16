@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { 
   Calendar, Search, Plus, Edit2, Trash2, X, Loader2, 
   ChevronLeft, ChevronRight, MoreVertical, Eye, DollarSign,
-  FileText, Download, RotateCcw, CheckCircle2, AlertCircle, User, Paperclip, UploadCloud
+  FileText, Download, RotateCcw, CheckCircle2, AlertCircle, User, Paperclip, UploadCloud, ChevronDown
 } from "lucide-react";
 import { useTheme } from "../App";
 
@@ -63,6 +63,7 @@ export default function Festas({ user }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("Todos");
+  const [filterDivergencia, setFilterDivergencia] = useState("Todos");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [isMoradorCadastrado, setIsMoradorCadastrado] = useState(false);
@@ -70,7 +71,8 @@ export default function Festas({ user }) {
   const [formData, setFormData] = useState({
     unidade_id: "", morador: "", contato: "", data_reserva: "",
     valor_taxa: "", pago: "Não", status: "Pendente", cpf: "", rg: "", convidados: "",
-    foto: "" , churrasqueira: "",
+    foto: "" , churrasqueira: "", divergencia_local: false, // Novo campo checkbox
+  obs: ""                   // Novo campo texto
   });
 
   const [filterPeriodo, setFilterPeriodo] = useState({ inicio: "", fim: "" });
@@ -87,7 +89,7 @@ export default function Festas({ user }) {
   };
 
   
-const [sortConfig, setSortConfig] = useState([]); // Array para suportar múltiplos filtros [{key, direction}]
+const [sortConfig, setSortConfig] = useState([{ key: 'data_reserva', direction: 'asc' }]);
   // Funções de Máscara
 const maskCPF = (v) => {
   v = v.replace(/\D/g, "");
@@ -101,6 +103,23 @@ const maskRGPrivacy = (rg) => {
   // Exemplo: 12.***.***-X ou 12.***.*** (depende do tamanho)
   return `${clean.substring(0, 2)}.***.***-${clean.slice(-1)}`;
 };
+
+const [showUnitDropdown, setShowUnitDropdown] = useState(false);
+const [unitSearch, setUnitSearch] = useState("");
+const dropdownRef = useRef(null);
+
+// Função para exibir o texto da unidade selecionada no seletor
+const getUnitLabel = (id) => {
+  const u = unidades.find(unit => unit.id.toString() === id.toString());
+  return u ? `BLOCO ${u.bloco} - UNIDADE ${u.unidade}` : "Selecione a Unidade...";
+};
+
+// Filtro da lista de unidades baseado no que o usuário digita
+const unidadesFiltradas = unidades.filter(u => 
+  u.bloco.toString().toLowerCase().includes(unitSearch.toLowerCase()) || 
+  u.unidade.toString().toLowerCase().includes(unitSearch.toLowerCase())
+);
+
 
 const verificarEAtualizarStatus = async (listaFestas) => {
   const agora = new Date();
@@ -157,25 +176,38 @@ const fileInputRef = useRef(null); // Adicione isso logo abaixo dos outros useSt
 // Converte a data do banco (DD/MM/YYYY HH:mm) para o formato do input (YYYY-MM-DDTHH:mm)
 const formatDateTimeForInput = (dateTimeStr) => {
   if (!dateTimeStr) return "";
-  if (dateTimeStr.includes('/') && dateTimeStr.includes(' ')) {
-    const [date, time] = dateTimeStr.split(' ');
-    const [day, month, year] = date.split('/');
-    return `${year}-${month}-${day}T${time}`;
+  // Se vier com espaço (ex: 15/10/2023 14:00) ou com T (ISO)
+  const separator = dateTimeStr.includes(' ') ? ' ' : 'T';
+  const [datePart] = dateTimeStr.split(separator);
+  
+  if (datePart.includes('/')) {
+    const [day, month, year] = datePart.split('/');
+    return `${year}-${month}-${day}`;
   }
-  return dateTimeStr.substring(0, 16);
+  return datePart;
 };
 
   useEffect(() => {
     fetchData();
+  
     const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+  
     const handleClickOutside = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenuId(null);
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setShowMenuId(null);
+      }
+  
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setShowUnitDropdown(false);
+      }
     };
+  
     document.addEventListener("mousedown", handleClickOutside);
+  
     return () => {
-        window.removeEventListener('resize', handleResize);
-        document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("resize", handleResize);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
@@ -635,6 +667,8 @@ const exportToExcel = () => {
   const dadosParaExportar = dadosFiltrados.map(f => {
     const linha = {};
 
+    
+
     // 2. Monta o objeto dinamicamente baseado nas colunas selecionadas
     colsAtivas.forEach(col => {
       if (col.id === 'unidade_id') {
@@ -656,7 +690,7 @@ else if (col.id === 'churrasqueira') {
         linha["Responsável"] = f.morador;
       }
       else if (col.id === 'data_reserva') {
-        linha["Data da Reserva"] = f.data_reserva?.replace('T', ' ');
+        linha["Data da Reserva"] = f.data_reserva?.split(' ')[0];
       }
       else if (col.id === 'valor_taxa') {
         linha["Valor da Taxa"] = Number(f.valor_taxa || 0);
@@ -717,9 +751,10 @@ const exportToPDF = () => {
     }
 
     // 4. Tratamento para DATA
-    if(c.id === 'data_reserva') return f[c.id]?.replace('T', ' ') || "";
+    if(c.id === 'data_reserva') return f[c.id]?.split(' ')[0] || "";
 
     return f[c.id] || "";
+    
   }));
 
   const gerarPDF = (incluirLogo = false) => {
@@ -889,9 +924,14 @@ const getFotosFestaInterno = (festaId, listaDeUploads) => {
   const dataNova = formData.data_reserva.split("T")[0]; 
   
   const conflito = festas.find(f => {
-      const dataExistente = formatDateTimeForInput(f.data_reserva).split("T")[0];
-      return dataExistente === dataNova && f.id !== formData.id && f.status !== "Cancelado";
-  });
+  const dataExistente = formatDateTimeForInput(f.data_reserva).split("T")[0];
+  return (
+    dataExistente === dataNova && 
+    f.churrasqueira === formData.churrasqueira && // <--- Adicione esta linha
+    f.id !== formData.id && 
+    f.status !== "Cancelado"
+  );
+});
 
   if (conflito) {
       if (conflito.status === "Agendado") {
@@ -1028,6 +1068,12 @@ const getFotosFestaInterno = (festaId, listaDeUploads) => {
     const matchesStatus = filterStatus === "Todos" || f.status === filterStatus;
     const matchesPago = filterPago === "Todos" || f.pago === filterPago;
 
+    const matchesChurrasqueira = filterChurrasqueira === "Todos" || f.churrasqueira === filterChurrasqueira;
+
+    // Normaliza o valor de divergencia_local para comparar com Sim/Não
+    const valorDivergencia = (f.divergencia_local === true || f.divergencia_local === "Sim") ? "Sim" : "Não";
+    const matchesDivergencia = filterDivergencia === "Todos" || valorDivergencia === filterDivergencia;
+
     let matchesData = true;
     if (filterPeriodo.inicio || filterPeriodo.fim) {
         const [d, m, y] = f.data_reserva.split(" ")[0].split("/");
@@ -1042,7 +1088,7 @@ const getFotosFestaInterno = (festaId, listaDeUploads) => {
             if (dataFesta > dataFim) matchesData = false;
         }
     }
-    return matchesSearch && matchesStatus && matchesPago && matchesData;
+    return matchesSearch && matchesStatus && matchesPago && matchesData && matchesDivergencia && matchesChurrasqueira;
   });
 
   // --- APLICA A NOVA ORDENAÇÃO ---
@@ -1076,7 +1122,9 @@ const getFotosFestaInterno = (festaId, listaDeUploads) => {
     });
   }
   return resultado;
-}, [festas, searchTerm, filterStatus, filterPago, filterPeriodo, sortConfig]);
+
+  
+}, [festas, searchTerm, filterStatus, filterPago, filterPeriodo, sortConfig, filterDivergencia, filterChurrasqueira]);
 
 // --- 3. RE-DECLARAÇÃO DAS VARIÁVEIS DE PAGINAÇÃO (Resolve os erros de undefined) ---
 const totalPages = Math.ceil(dadosFiltrados.length / (itemsPerPage === "Todos" ? dadosFiltrados.length : itemsPerPage));
@@ -1255,6 +1303,7 @@ const itensExibidos = React.useMemo(() => {
     setFilterPago("Todos");
     setFilterChurrasqueira("Todos"); // <--- Adicionado aqui
     setFilterPeriodo({ inicio: "", fim: "" }); // Reseta o objeto de datas
+    setFilterDivergencia("Todos");
     setCurrentPage(1); // Opcional: volta para a primeira página
   }}
 >
@@ -1318,22 +1367,45 @@ const itensExibidos = React.useMemo(() => {
   ))}
 </div>
 
-            {/* Filtro Período (Estilo Search Container) */}
+
+  {/* Grupo Divergência */}
+  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+    {["Todos", "Sim", "Não"].map(d => (
+      <button 
+        key={d} 
+        className={`filter-pill ${filterDivergencia === d ? 'active' : ''}`} 
+        onClick={() => setFilterDivergencia(d)}
+        style={{
+          // Cor diferenciada para o estado ativo de Divergência (ex: Laranja/Amarelo)
+          backgroundColor: filterDivergencia === d && d !== "Todos" ? '#3b82f6' : ''
+        }}
+      >
+        {d === "Todos" ? "Divergência: Todas" : d}
+      </button>
+    ))}
+  </div>
+
+
+
+        {/* Filtro Período */}
 <div style={{
     display: 'flex', 
-    alignItems: 'center', 
+    alignItems: 'center', // Centraliza verticalmente (o "até" fica no meio da altura das caixas)
     gap: '10px', 
     flex: 1, 
     justifyContent: isMobile ? 'center' : 'flex-end',
-    flexWrap: 'wrap' // 1. ESSENCIAL: Permite que os campos pulem de linha se não couberem
+    flexWrap: 'nowrap' // Mantém na mesma linha; se quiser que quebre no mobile, use 'wrap'
 }}>
+    {/* Caixa 1 */}
     <div style={{
         ...searchContainer, 
         backgroundColor: theme.bg, 
         borderColor: theme.border, 
         padding: '5px 10px', 
-        minWidth: isMobile ? '100%' : '150px', // 2. Ocupa tudo no mobile
-        flex: isMobile ? 1 : 'none'
+        minWidth: isMobile ? '120px' : '150px', 
+        display: 'flex',
+        alignItems: 'center',
+        gap: '5px'
     }}>
         <Calendar size={14} color={theme.textSecondary} />
         <input 
@@ -1344,23 +1416,33 @@ const itensExibidos = React.useMemo(() => {
                 color: theme.text, 
                 fontSize:'12px', 
                 outline:'none',
-                width: '100%' // Garante que o input use o espaço do container
+                width: '100%'
             }} 
             value={filterPeriodo.inicio} 
             onChange={e => setFilterPeriodo({...filterPeriodo, inicio: e.target.value})}
         />
     </div>
 
-    <span style={{color: theme.textSecondary, fontSize: '12px', display: isMobile ? 'none' : 'block'}}>até</span>
-    {/* No mobile, o "até" pode atrapalhar o layout, se quiser manter use display: block */}
+    {/* Texto "até" Centralizado */}
+    <span style={{
+        color: theme.textSecondary, 
+        fontSize: '12px', 
+        whiteSpace: 'nowrap',
+        alignSelf: 'center' // Garante o alinhamento no meio
+    }}>
+        até
+    </span>
 
+    {/* Caixa 2 */}
     <div style={{
         ...searchContainer, 
         backgroundColor: theme.bg, 
         borderColor: theme.border, 
         padding: '5px 10px', 
-        minWidth: isMobile ? '100%' : '150px', // 3. Ocupa tudo no mobile
-        flex: isMobile ? 1 : 'none'
+        minWidth: isMobile ? '120px' : '150px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '5px'
     }}>
         <Calendar size={14} color={theme.textSecondary} />
         <input 
@@ -1378,13 +1460,13 @@ const itensExibidos = React.useMemo(() => {
         />
     </div>
 
+    {/* Botão Reset */}
     {(filterPeriodo.inicio || filterPeriodo.fim) && (
         <RotateCcw 
             size={16} 
             cursor="pointer" 
             color={theme.textSecondary} 
             onClick={() => setFilterPeriodo({inicio: "", fim: ""})} 
-            style={{ marginLeft: isMobile ? 'auto' : '0' }}
         />
     )}
 </div>
@@ -1401,7 +1483,7 @@ const itensExibidos = React.useMemo(() => {
       { label: "Unidade", key: "unidade_id" },
       { label: "Churrasqueira", key: "churrasqueira" },
       { label: "Morador", key: "morador" },
-      { label: "Data/Hora", key: "data_reserva" },
+      { label: "Data", key: "data_reserva" },
       { label: "Valor", key: "valor_taxa" },
       { label: "Pago", key: "pago" },
       { label: "Status", key: "status" }
@@ -1424,55 +1506,99 @@ const itensExibidos = React.useMemo(() => {
   </tr>
 </thead>
                 <tbody>
-                    {itensExibidos.map((f) => {
-                        const unit = unidades.find(u => u.id?.toString() === f.unidade_id?.toString());
-                        return (
-                            <tr key={f.id} style={{ ...trStyle, borderBottom: `1px solid ${theme.border}` }}>
-  {/* Coluna Unidade */}
-  <td style={{ ...tdStyle, color: theme.text, textAlign: 'left' }}>
-    <strong>{unit ? `B${unit.bloco} - ${unit.unidade}` : f.unidade_id}</strong>
-  </td>
+  {itensExibidos.map((f) => {
+    const unit = unidades.find(u => u.id?.toString() === f.unidade_id?.toString());
+    return (
+      <tr key={f.id} style={{ ...trStyle, borderBottom: `1px solid ${theme.border}` }}>
+        {/* Coluna Unidade */}
+        <td style={{ ...tdStyle, color: theme.text, textAlign: 'left' }}>
+          <strong>{unit ? `B${unit.bloco} - ${unit.unidade}` : f.unidade_id}</strong>
+        </td>
 
-  {/* Coluna Churrasqueira CENTRALIZADA */}
-  <td style={{ ...tdStyle, textAlign: 'left' }}>
-  <span style={getChurrasqueiraBadge(f.churrasqueira)}>
-    {f.churrasqueira}
-  </span>
-</td>
-                                <td style={{ ...tdStyle, color: theme.text }}>
-  <div style={{ display: 'flex', flexDirection: 'column' }}>
-    <span style={{ fontWeight: '600' }}>{f.morador}</span>
-    {f.cpf && (
-      <span style={{ fontSize: '12px', color: theme.textSecondary, marginTop: '2px' }}>
-        {/* Chamada da função de privacidade */}
-        {maskCPFPrivacy(f.cpf)}
-      </span>
-    )}
-  </div>
-</td>
-                                <td style={{ ...tdStyle, color: theme.text }}>{f.data_reserva?.replace('T', ' ')}</td>
-                                <td style={{ ...tdStyle, color: theme.text }}>{formatCurrency(f.valor_taxa)}</td>
-                                <td style={tdStyle}>
-                                    <span style={f.pago === "Sim" ? badgeGreen : badgeRed}>
-                                        {f.pago === "Sim" ? "Sim" : "Não"}
-                                    </span>
-                                </td>
-                                <td style={tdStyle}>
-                                    <span style={{
-                                        ...badgeGreen, 
-                                        backgroundColor: f.status === 'Cancelado' ? '#fee2e2' : f.status === 'Realizado' ? '#dcfce7' : f.status === 'Pendente' ? '#fef9c3' : '#e0e7ff',
-                                        color: f.status === 'Cancelado' ? '#b91c1c' : f.status === 'Realizado' ? '#15803d' : f.status === 'Pendente' ? '#a16207' : '#4338ca'
-                                    }}>
-                                        {f.status}
-                                    </span>
-                                </td>
-                                <td style={{ ...tdStyle, textAlign: 'right', position: 'relative' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px' }}>
-                                        <Eye size={18} color="#3b82f6" cursor="pointer" onClick={() => { setSelectedFesta(f); setShowViewModal(true); }} />
-                                        <button onClick={() => setShowMenuId(showMenuId === f.id ? null : f.id)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-                                            <MoreVertical size={20} color={theme.textSecondary} />
-                                        </button>
-                                    </div>
+        {/* Coluna Churrasqueira */}
+        <td style={{ ...tdStyle, textAlign: 'left' }}>
+          <span style={getChurrasqueiraBadge(f.churrasqueira)}>
+            {f.churrasqueira}
+          </span>
+        </td>
+
+        {/* Coluna Morador */}
+        <td style={{ ...tdStyle, color: theme.text }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontWeight: '600' }}>{f.morador}</span>
+            {f.cpf && (
+              <span style={{ fontSize: '12px', color: theme.textSecondary, marginTop: '2px' }}>
+                {maskCPFPrivacy(f.cpf)}
+              </span>
+            )}
+          </div>
+        </td>
+
+        {/* Coluna Data */}
+        <td style={tdStyle}>
+          {f.data_reserva ? f.data_reserva.split(' ')[0] : ""}
+        </td>
+
+        {/* Coluna Valor */}
+        <td style={{ ...tdStyle, color: theme.text }}>
+          {formatCurrency(f.valor_taxa)}
+        </td>
+
+        {/* Coluna Pago */}
+        <td style={tdStyle}>
+          <span style={f.pago === "Sim" ? badgeGreen : badgeRed}>
+            {f.pago === "Sim" ? "Sim" : "Não"}
+          </span>
+        </td>
+
+        {/* Coluna Status */}
+        <td style={tdStyle}>
+          <span style={{
+            ...badgeGreen, 
+            backgroundColor: f.status === 'Cancelado' ? '#fee2e2' : f.status === 'Realizado' ? '#dcfce7' : f.status === 'Pendente' ? '#fef9c3' : '#e0e7ff',
+            color: f.status === 'Cancelado' ? '#b91c1c' : f.status === 'Realizado' ? '#15803d' : f.status === 'Pendente' ? '#a16207' : '#4338ca'
+          }}>
+            {f.status}
+          </span>
+        </td>
+
+        {/* --- COLUNA AÇÕES --- */}
+        <td style={{ ...tdStyle, textAlign: 'right', position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px' }}>
+            
+            {/* Container do Olho + Asterisco */}
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Eye 
+                size={18} 
+                color="#3b82f6" 
+                style={{ cursor: 'pointer' }} 
+                onClick={() => { setSelectedFesta(f); setShowViewModal(true); }} 
+              />
+              
+              {/* Asterisco */}
+              {((f.divergencia_local === "Sim" || f.divergencia_local === true) || (f.obs && f.obs.trim() !== "")) && (
+                <span style={{
+                  position: 'absolute',
+                  top: '-10px',
+                  right: '-8px',
+                  color: '#ef4444',
+                  fontWeight: 'bold',
+                  fontSize: '20px',
+                  pointerEvents: 'none'
+                }}>
+                  *
+                </span>
+              )}
+            </div>
+
+            {/* Menu de Opções */}
+            <button 
+              onClick={() => setShowMenuId(showMenuId === f.id ? null : f.id)} 
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}
+            >
+              <MoreVertical size={20} color={theme.textSecondary} />
+            </button>
+          </div>
                                     {showMenuId === f.id && (
     <div ref={menuRef} className="action-menu" style={{ right: '10px', top: '40px' }}>
         {/* BOTÃO GERAR CONTRATO */}
@@ -1600,23 +1726,83 @@ const itensExibidos = React.useMemo(() => {
 
     {showModal && (
   <div style={modalOverlay}>
-    <div style={{...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth: '500px'}}>
-      <div style={modalHeader}>
-        <h3>{modalType === "add" ? "Nova Reserva" : "Editar Reserva"}</h3>
-        <X size={20} cursor="pointer" onClick={() => setShowModal(false)} />
-      </div>
-      
-      <div style={{display:'flex', flexDirection:'column', gap:'15px', maxHeight: '70vh', overflowY: 'auto', padding: '5px'}}>
-        {/* Campo Unidade */}
-        <div>
-          <label style={labelStyle}>Unidade</label>
-          <select style={{...selectStyle, width:'100%', backgroundColor: theme.bg, color: theme.text, borderColor: theme.border}} 
-                  value={formData.unidade_id} 
-                  onChange={e => setFormData({...formData, unidade_id: e.target.value})}>
-            <option value="">Selecione a Unidade...</option>
-            {unidades.map(u => <option key={u.id} value={u.id}>B{u.bloco} - {u.unidade}</option>)}
-          </select>
+      <div style={{ ...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth: '500px' }}>
+        <div style={modalHeader}>
+          <h3 style={{ margin: 0 }}>{modalType === "add" ? "Nova Mudança" : "Editar Mudança"}</h3>
+          <X size={20} cursor="pointer" onClick={() => setShowModal(false)} />
         </div>
+  
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '70vh', overflowY: 'auto', padding: '5px' }}>
+  
+          {/* Campo Unidade com Busca Flutuante */}
+          <div style={{ position: 'relative' }} ref={dropdownRef}>
+            <label style={labelStyle}>Unidade</label>
+            <div
+              style={{
+                ...selectStyle,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                cursor: 'pointer',
+                backgroundColor: theme.bg,
+                color: theme.text,
+                borderColor: theme.border
+              }}
+              onClick={() => setShowUnitDropdown(!showUnitDropdown)}
+            >
+              <span>{formData.unidade_id ? getUnitLabel(formData.unidade_id) : "Selecione a unidade..."}</span>
+              <ChevronDown size={16} />
+            </div>
+  
+            {showUnitDropdown && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, width: '100%',
+                backgroundColor: theme.mainBg, border: `1px solid ${theme.border}`,
+                borderRadius: '8px', zIndex: 1200, boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                marginTop: '4px', overflow: 'hidden'
+              }}>
+                <div style={{ padding: '8px' }}>
+                  <input
+                    style={{
+                      width: '100%', padding: '8px', borderRadius: '6px',
+                      border: `1px solid ${theme.border}`, backgroundColor: theme.bg,
+                      color: theme.text, boxSizing: 'border-box', outline: 'none'
+                    }}
+                    placeholder="Digite o bloco ou apto..."
+                    autoFocus
+                    value={unitSearch}
+                    onChange={(e) => setUnitSearch(e.target.value)}
+                  />
+                </div>
+                <div style={{ maxHeight: '180px', overflowY: 'auto' }}>
+                  {unidadesFiltradas.length > 0 ? (
+                    unidadesFiltradas.map(u => (
+                      <div
+                        key={u.id}
+                        style={{
+                          padding: '10px 15px', cursor: 'pointer', fontSize: '14px',
+                          borderBottom: `1px solid ${theme.border}`
+                        }}
+                        onClick={() => {
+                          setFormData({ ...formData, unidade_id: u.id });
+                          setShowUnitDropdown(false);
+                          setUnitSearch("");
+                        }}
+                        onMouseEnter={(e) => e.target.style.backgroundColor = theme.bg}
+                        onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                      >
+                        BLOCO {u.bloco} - UNIDADE {u.unidade}
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ padding: '15px', textAlign: 'center', fontSize: '12px', opacity: 0.7 }}>
+                      Nenhuma unidade encontrada
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
         {/* Checkbox Morador */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px', borderRadius: '8px', backgroundColor: theme.bg }}>
@@ -1679,11 +1865,16 @@ const itensExibidos = React.useMemo(() => {
 />
 </div>
 
-        {/* Data e Telefone */}
+       {/* Data e Telefone */}
         <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px'}}>
           <div>
-            <label style={labelStyle}>Data e Hora (Início)</label>
-            <input type="datetime-local" style={{...selectStyle, width:'100%', backgroundColor: theme.bg, color: theme.text, borderColor: theme.border}} value={formData.data_reserva} onChange={e => setFormData({...formData, data_reserva: e.target.value})} />
+            <label style={labelStyle}>Data</label>
+            <input
+  type="date"
+  style={{...selectStyle, width:'100%', backgroundColor: theme.bg, color: theme.text, borderColor: theme.border}}
+  value={formData.data_reserva ? formData.data_reserva.split('T')[0] : ""}
+  onChange={(e) => setFormData({...formData, data_reserva: e.target.value})}
+/>
           </div>
           <div>
             <label style={labelStyle}>Telefone Contato</label>
@@ -1795,7 +1986,7 @@ const itensExibidos = React.useMemo(() => {
     <input
     type="file"
     multiple
-    accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx"
+    accept="image/*,application/pdf"
     onChange={handleFileChange}
     style={{ display: 'none' }}
     id="file-upload"  /* O id deve ser exatamente igual ao htmlFor do label */
@@ -1803,6 +1994,47 @@ const itensExibidos = React.useMemo(() => {
 </label>
           </div>
         </div>
+
+{/* Renderiza apenas se estiver editando uma reserva existente */}
+{modalType === 'edit' && (
+  <>
+    {/* Divergência */}
+    <div style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <input 
+        type="checkbox" 
+        id="divergencia_local"
+        checked={formData.divergencia_local || false}
+        onChange={(e) => setFormData({ ...formData, divergencia_local: e.target.checked })}
+        style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+      />
+      <label htmlFor="divergencia_local" style={{ ...labelStyle, marginBottom: 0, cursor: 'pointer' }}>
+        Divergência
+      </label>
+    </div>
+
+    {/* Observação */}
+    <div style={{ marginBottom: '15px' }}>
+      <label style={labelStyle}>Observações</label>
+      <textarea 
+        style={{
+          ...selectStyle, 
+          width:'100%', 
+          backgroundColor: theme.bg, 
+          color: theme.text, 
+          borderColor: theme.border,
+          minHeight: '80px',
+          fontFamily: 'inherit',
+          padding: '10px',
+          borderRadius: '8px',
+          resize: 'vertical'
+        }} 
+        placeholder="Alguma observação importante sobre a festa..."
+        value={formData.obs || ""} 
+        onChange={e => setFormData({...formData, obs: e.target.value})}
+      />
+    </div>
+  </>
+)}
 
         <button 
           style={{
@@ -1839,17 +2071,48 @@ const itensExibidos = React.useMemo(() => {
               </div>
 
               {/* Dados do Evento */}
-              <div style={{...viewBox, backgroundColor: theme.bg, borderColor: theme.border}}>
-                <strong>Data/Hora:</strong> {selectedFesta.data_reserva?.replace('T', ' ')} <br/>
-                <strong>Valor Taxa:</strong> {formatCurrency(selectedFesta.valor_taxa)} <br/>
-                <strong>Convidados:</strong> {selectedFesta.convidados || "Não informado"}
-              </div>
+              {/* Dados do Evento - CORRIGIDO */}
+<div style={{...viewBox, backgroundColor: theme.bg, borderColor: theme.border, display: 'flex', flexDirection: 'column', gap: '8px'}}>
+  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+    <span><strong>Data:</strong> {selectedFesta.data_reserva ? selectedFesta.data_reserva.split(/[ T]/)[0] : ""}</span>
+  </div>
+  
+  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+    <span><strong>Valor Taxa:</strong> {formatCurrency(selectedFesta.valor_taxa)}</span>
+  </div>
+
+  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+    <span><strong>Convidados:</strong> {selectedFesta.convidados || "Não informado"}</span>
+  </div>
+</div>
 
               {/* Pagamento e Status */}
               <div style={{...viewBox, backgroundColor: theme.bg, borderColor: theme.border, display: 'flex', justifyContent: 'space-between'}}>
                 <span><strong>Pago:</strong> {selectedFesta.pago}</span>
                 <span><strong>Status:</strong> {selectedFesta.status}</span>
               </div>
+
+               {/* SEÇÃO Detalhes (Divergência e Observação) */}
+<div style={{...viewBox, backgroundColor: theme.bg, borderColor: theme.border}}>
+  <div style={{ marginBottom: selectedFesta.obs ? '8px' : '0' }}>
+    <strong>Divergência:</strong> {selectedFesta.divergencia_local ? "Sim" : "Não"}
+  </div>
+  
+  {/* Se não estiver aparecendo, verifique se 'obs' é o nome exato da coluna no seu banco/Sheets */}
+  {selectedFesta.obs && (
+    <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid ${theme.border}` }}>
+      <strong>Observações:</strong>
+      <div style={{ 
+        whiteSpace: 'pre-wrap', 
+        color: theme.textSecondary, 
+        marginTop: '4px',
+        fontSize: '13px' 
+      }}>
+        {selectedFesta.obs}
+      </div>
+    </div>
+  )}
+</div>
 
               
 
