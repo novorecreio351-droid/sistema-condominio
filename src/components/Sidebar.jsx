@@ -1,4 +1,5 @@
- 
+import { useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import React, { useState, useRef, useEffect } from "react";
 import { 
   LayoutDashboard, 
@@ -23,6 +24,8 @@ import {
 import { useTheme } from "../App"; 
 
 export default function Sidebar({ active, setActive, user, onLogout }) {
+  const navigate = useNavigate(); // <-- Adicione esta linha
+  const location = useLocation();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const menuRef = useRef(null);
@@ -30,6 +33,7 @@ export default function Sidebar({ active, setActive, user, onLogout }) {
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
+  // --- SEUS USEEFFECTS ORIGINAIS ---
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener("resize", handleResize);
@@ -46,6 +50,15 @@ export default function Sidebar({ active, setActive, user, onLogout }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // --- NOVO: SINCRONIZAR O MENU COM A URL (Caso o usuário dê F5) ---
+  useEffect(() => {
+    const path = location.pathname.substring(1); // Ex: "/dashboard" vira "dashboard"
+    if (path) {
+      const formatted = path.charAt(0).toUpperCase() + path.slice(1);
+      setActive(formatted); // Mantém o item cinza/azul correto no menu
+    }
+  }, [location, setActive]);
+
   const renderItem = (label, Icon, displayName = null) => {
     const isActive = active === label;
     const activeBg = theme.isDark ? "#0369a133" : "#e0f2fe";
@@ -55,7 +68,17 @@ export default function Sidebar({ active, setActive, user, onLogout }) {
     return (
       <li
         key={label}
-        onClick={() => { setActive(label); setMobileOpen(false); }} 
+        onClick={() => { 
+          // 1. Atualiza o estado visual
+          setActive(label); 
+          setMobileOpen(false);
+          
+          // 2. Cria a rota limpa (ex: "Mudanças" vira "mudancas")
+          const rota = label.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          
+          // 3. Navega para a URL
+          navigate(`/${rota}`); 
+        }} 
         style={{
           ...itemStyle,
           backgroundColor: isActive ? activeBg : "transparent",
@@ -123,34 +146,45 @@ export default function Sidebar({ active, setActive, user, onLogout }) {
         </div>
 
         {/* NAVEGAÇÃO */}
-        <nav style={navStyle}>
-          <p style={categoryTitle}>Principal</p>
-          <ul style={listStyle}>
-            {renderItem("Dashboard", LayoutDashboard)}
-            {renderItem("Unidades", Building2)}
-            {renderItem("Moradores", Users)}
-            {renderItem("Vagas", Car)}
-            {renderItem("Piscina", Waves)}
-            {renderItem("Manutenção", Wrench)}
-            {renderItem("Funcionários", UsersRound)}
-          </ul>
+<nav style={navStyle}>
+  <p style={categoryTitle}>Principal</p>
+  <ul style={listStyle}>
+    {renderItem("Dashboard", LayoutDashboard)}
+    {/* Somente mostra Unidades se NÃO for Conselheiro */}
+    {user?.cargo !== "Conselheiro" && (
+      <>
+        {renderItem("Unidades", Building2)}
+        {renderItem("Moradores", Users)}
+        {renderItem("Vagas", Car)}
+        {renderItem("Piscina", Waves)}
+        {renderItem("Manutenção", Wrench)}
+        {renderItem("Funcionários", UsersRound)}
+      </>
+    )}
+  </ul>
 
-          <p style={categoryTitle}>Agendamentos</p>
-          <ul style={listStyle}>
-            {renderItem("Festas", PartyPopper, "Salão de Festas")}
-            {renderItem("Churrasqueira", Flame, "Churrasqueira")}
-            {renderItem("Mudanças", Truck)}
-            {renderItem("Calendário", CalendarDays)}
-          </ul>
+  {/* Esconde Agendamentos inteiros para Conselheiro */}
+  {user?.cargo !== "Conselheiro" && (
+    <>
+      <p style={categoryTitle}>Agendamentos</p>
+      <ul style={listStyle}>
+        {renderItem("Festas", PartyPopper, "Salão de Festas")}
+        {renderItem("Churrasqueira", Flame, "Churrasqueira")}
+        {renderItem("Mudanças", Truck)}
+        {renderItem("Calendário", CalendarDays)}
+      </ul>
+    </>
+  )}
 
-          <p style={categoryTitle}>Gestão Financeira</p>
-          <ul style={listStyle}>
-            {renderItem("Inadimplentes", CircleDollarSign)}
-            {renderItem("Notas", FileText)}
-            {renderItem("Compras", ShoppingCart)}
-            {renderItem("Multas", FileX)}
-          </ul>
-        </nav>
+  <p style={categoryTitle}>Gestão Financeira</p>
+  <ul style={listStyle}>
+    {/* Esconde Inadimplentes e Multas do Conselheiro */}
+    {user?.cargo !== "Conselheiro" && renderItem("Inadimplentes", CircleDollarSign)}
+    {renderItem("Notas", FileText)}
+    {renderItem("Compras", ShoppingCart)}
+    {user?.cargo !== "Conselheiro" && renderItem("Multas", FileX)}
+  </ul>
+</nav>
 
         {/* PERFIL */}
         <div style={userProfile} ref={menuRef}>

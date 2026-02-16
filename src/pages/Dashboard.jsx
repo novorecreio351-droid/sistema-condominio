@@ -95,20 +95,26 @@ export default function Dashboard({ user }) {
   }, [user]);
 
   return (
-    <div style={{ padding: "10px" }}>
-      <Header user={user} theme={theme} />
-      <Cards 
-        theme={theme}
-        inadimplentes={loading ? "..." : stats.inadimplentes} 
-        moradores={loading ? "..." : stats.moradores}
-        reservas={loading ? "..." : stats.reservas}
-      />
+  <div style={{ padding: "10px" }}>
+    <Header user={user} theme={theme} />
+    
+    <Cards 
+      user={user} // Passe o user para o componente Cards
+      theme={theme}
+      inadimplentes={loading ? "..." : stats.inadimplentes} 
+      moradores={loading ? "..." : stats.moradores}
+      reservas={loading ? "..." : stats.reservas}
+    />
+
+    {/* Só mostra as listas detalhadas se NÃO for Conselheiro */}
+    {user?.cargo !== "Conselheiro" && (
       <div style={contentGrid}>
         <RecentActivities logs={logs} loading={loading} theme={theme} />
         <UpcomingBookings data={upcoming} loading={loading} theme={theme} />
       </div>
-    </div>
-  );
+    )}
+  </div>
+);
 }
 
 /* ================= COMPONENTES DE INTERFACE ================= */
@@ -127,11 +133,17 @@ function Header({ user, theme }) {
   );
 }
 
-function Cards({ inadimplentes, moradores, reservas, theme }) {
+function Cards({ user, inadimplentes, moradores, reservas, theme }) {
+  const isConselheiro = user?.cargo === "Conselheiro";
   return (
     <div style={cardsGrid}>
       <Card theme={theme} title="Unidades Ocupadas" value={moradores} Icon={Users} color="#3b82f6" />
-      <Card theme={theme} title="Reservas Ativas" value={reservas} Icon={CalendarCheck} color="#16a34a" />
+      
+      {/* Esconde Reservas se for Conselheiro */}
+      {!isConselheiro && (
+        <Card theme={theme} title="Reservas Ativas" value={reservas} Icon={CalendarCheck} color="#16a34a" />
+      )}
+
       <Card theme={theme} title="Inadimplentes" value={inadimplentes} Icon={AlertCircle} color="#ef4444" />
       <Card theme={theme} title="Compras Pendentes" value="5" Icon={ShoppingCart} color="#ea580c" />
       <Card theme={theme} title="Notas Fiscais" value="14" Icon={FileText} color="#7c3aed" />

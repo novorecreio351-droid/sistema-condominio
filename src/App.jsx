@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
  
 /* eslint-disable react-refresh/only-export-components */
-import { BrowserRouter, Routes, Route } from "react-router-dom"; // IMPORTANTE
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import React, { useState, useEffect, createContext, useContext } from "react";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
@@ -13,6 +13,7 @@ import Churrasqueira from "./pages/Churrasqueira";
 import SelecaoUsuario from "./pages/SelecaoUsuario";
 import Mudancas from "./pages/Mudancas";
 import Calendario from "./pages/Calendario";
+import Compras from "./pages/Compras";
 
 // ================= CONTEXTO DE TEMA =================
 const ThemeContext = createContext();
@@ -129,30 +130,48 @@ export default function App() {
     return <SelecaoUsuario onSelectUser={(user) => setUsuarioLogado(user)} />;
   }
 
-  // ================= APP PRINCIPAL =================
+  // 1. Não esqueça de importar no topo do arquivo:
+// import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+
+// ================= APP PRINCIPAL COM ROTAS =================
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      <div style={{ display: "flex", minHeight: "100vh", width: "100%", backgroundColor: theme.bg, color: theme.text }}>
-        
-        <Sidebar 
-          active={activeTab} 
-          setActive={setActiveTab} 
-          user={usuarioLogado} 
-          onLogout={handleLogout} 
-        />
+      <Router>
+        <div style={{ display: "flex", minHeight: "100vh", width: "100%", backgroundColor: theme.bg, color: theme.text }}>
+          
+          <Sidebar 
+            active={activeTab} 
+            setActive={setActiveTab} 
+            user={usuarioLogado} 
+            onLogout={handleLogout} 
+          />
 
-        <main style={{ flex: 1, height: "100vh", overflowY: "auto", padding: "20px" }}>
-          {activeTab === "Dashboard" && <Dashboard user={usuarioLogado} />}
-          {activeTab === "Unidades" && <Unidades />}
-          {activeTab === "Moradores" && <Moradores user={usuarioLogado} />}
-          {activeTab === "Vagas" && <Vagas user={usuarioLogado} />}
-          {activeTab === "Festas" && <Festas user={usuarioLogado} />}
-          {activeTab === "Churrasqueira" && <Churrasqueira user={usuarioLogado} />} 
-          {activeTab === "Mudanças" && <Mudancas user={usuarioLogado} />}
-          {activeTab === "Calendário" && <Calendario user={usuarioLogado} />}
-        </main>
+          <main style={{ flex: 1, height: "100vh", overflowY: "auto", padding: "20px" }}>
+            <Routes>
+              {/* Rotas acessíveis por TODOS */}
+              <Route path="/dashboard" element={<Dashboard user={usuarioLogado} />} />
+              <Route path="/compras" element={<Compras user={usuarioLogado} />} />
 
-      </div>
+              {/* Rotas restritas (Bloqueia Conselheiro) */}
+              {usuarioLogado?.cargo !== "Conselheiro" && (
+                <>
+                  <Route path="/unidades" element={<Unidades />} />
+                  <Route path="/moradores" element={<Moradores user={usuarioLogado} />} />
+                  <Route path="/vagas" element={<Vagas user={usuarioLogado} />} />
+                  <Route path="/festas" element={<Festas user={usuarioLogado} />} />
+                  <Route path="/churrasqueira" element={<Churrasqueira user={usuarioLogado} />} />
+                  <Route path="/mudancas" element={<Mudancas user={usuarioLogado} />} />
+                  <Route path="/calendario" element={<Calendario user={usuarioLogado} />} />
+                </>
+              )}
+
+              {/* Redirecionamento se a rota não existir ou estiver na home */}
+              <Route path="/" element={<Navigate to="/dashboard" />} />
+              <Route path="*" element={<Navigate to="/dashboard" />} />
+            </Routes>
+          </main>
+        </div>
+      </Router>
     </ThemeContext.Provider>
   );
 }
