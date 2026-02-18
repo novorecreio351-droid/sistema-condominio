@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/exhaustive-deps */
+ 
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useRef } from "react";
 import { 
@@ -55,7 +55,7 @@ export default function Festas({ user }) {
   const [showModal, setShowModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedFesta, setSelectedFesta] = useState(null);
-  const [modalType, setModalType] = useState("add");
+  const [modalType, setModalType] = useState("add"); // "add" ou "edit"
   const [showMenuId, setShowMenuId] = useState(null);
   const menuRef = useRef(null);
 
@@ -69,7 +69,7 @@ export default function Festas({ user }) {
   const [formData, setFormData] = useState({
   id_unidade: "", morador: "", contato: "", data_mudanca: "",
   status: "Pendente", cpf: "", rg: "", 
-  tipo: "Entrada", periodo: "Manhã", obs: "" // Novos campos
+  tipo: "Entrada", periodo: "Manhã", obs: "", data_fim: "" // Novos campos
 });
 
 const formatToInputDate = (dateStr) => {
@@ -188,10 +188,12 @@ const formatDateTimeForInput = (dateTimeStr) => {
   const fetchData = async () => {
   try {
     setLoadingInitial(true);
+    
+    // Adicionamos { method: "GET", redirect: "follow" } em cada chamada fetch
     const [resMudancas, resUnidades, resMoradores] = await Promise.all([
-      fetch(`${API_URL}?token=${TOKEN}&sheet=MUDANCAS`).then(r => r.json()),
-      fetch(`${API_URL}?token=${TOKEN}&sheet=UNIDADES`).then(r => r.json()),
-      fetch(`${API_URL}?token=${TOKEN}&sheet=MORADORES`).then(r => r.json()),
+      fetch(`${API_URL}?token=${TOKEN}&sheet=MUDANCAS`, { method: "GET", redirect: "follow" }).then(r => r.json()),
+      fetch(`${API_URL}?token=${TOKEN}&sheet=UNIDADES`, { method: "GET", redirect: "follow" }).then(r => r.json()),
+      fetch(`${API_URL}?token=${TOKEN}&sheet=MORADORES`, { method: "GET", redirect: "follow" }).then(r => r.json()),
     ]);
 
     // IMPORTANTE: Salvar os dados da planilha MUDANCAS no estado festas
@@ -207,9 +209,12 @@ const formatDateTimeForInput = (dateTimeStr) => {
     setMoradores(Array.isArray(resMoradores) ? resMoradores : []);
 
   } catch (error) { 
-    console.error("Erro ao carregar dados:", error); 
+    console.error("Erro ao carregar dados (CORS/Redirect):", error); 
   } finally { 
-    setLoadingInitial(false); 
+    // Delay de 300ms para suavizar a transição do loading para a tabela
+    setTimeout(() => {
+      setLoadingInitial(false);
+    }, 300);
   }
 };
 const maskCPFPrivacy = (cpf) => {
@@ -364,87 +369,110 @@ const exportToPDF = () => {
     });
   }
 };
+const formatToInputDateTime = (dateStr) => {
+  if (!dateStr) return "";
 
+  try {
+    const s = dateStr.toString().trim();
+
+    // 1. Tratamento para formato brasileiro: "18/02/2026 15:15:59"
+    if (s.includes('/')) {
+      const [data, horaFull] = s.split(' ');
+      const [d, m, y] = data.split('/');
+      
+      // Pega apenas os primeiros 5 caracteres da hora (HH:mm)
+      const horaMinuto = horaFull ? horaFull.substring(0, 5) : "00:00";
+      
+      return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}T${horaMinuto}`;
+    }
+
+    // 2. Tratamento para formato ISO vindo da planilha: "2026-02-18 15:15:59"
+    if (s.includes('-')) {
+      const [data, horaFull] = s.replace('T', ' ').split(' ');
+      const horaMinuto = horaFull ? horaFull.substring(0, 5) : "00:00";
+      
+      return `${data}T${horaMinuto}`;
+    }
+
+    return s;
+  } catch (e) {
+    console.error("Erro ao formatar data:", e);
+    return "";
+  }
+};
 
   const handleSave = async () => {
   // 1. VALIDAÇÃO DE CAMPOS OBRIGATÓRIOS
-  if (!formData.id_unidade) {
-    alert("O campo UNIDADE é obrigatório.");
-    return;
-  }
-  if (!formData.morador || formData.morador.trim() === "") {
-    alert("O campo NOME DO RESPONSÁVEL é obrigatório.");
-    return;
-  }
-  if (!formData.data_mudanca) {
-    alert("O campo DATA DA MUDANÇA é obrigatório.");
-    return;
-  }
-  if (!formData.contato || formData.contato.trim() === "") {
-    alert("O campo TELEFONE CONTATO é obrigatório.");
-    return;
-  }
- const idMoradorFinal = isMoradorCadastrado 
-  ? moradores.find(m => m.nome === formData.morador)?.id 
-  : "";
+  if (!formData.id_unidade) return alert("O campo UNIDADE é obrigatório.");
+  if (!formData.morador?.trim()) return alert("O campo NOME DO RESPONSÁVEL é obrigatório.");
+  if (!formData.data_mudanca) return alert("O campo DATA INÍCIO é obrigatório.");
+  if (!formData.data_fim) return alert("O campo DATA FIM é obrigatório."); // Validando o fim
+  if (!formData.contato?.trim()) return alert("O campo TELEFONE CONTATO é obrigatório.");
 
-  // 2. LÓGICA DE VALIDAÇÃO DE CONFLITO
+  const idMoradorFinal = isMoradorCadastrado 
+    ? moradores.find(m => m.nome === formData.morador)?.id 
+    : "";
+
+  // 2. LÓGICA DE VALIDAÇÃO DE CONFLITO (POR BLOCO NO DIA)
   const dataNovaISO = formData.data_mudanca.split("T")[0]; 
-  
+  const blocoNovo = formData.id_unidade.toString().charAt(0); 
+
   const conflito = festas.find(f => {
       if (!f.data_mudanca || f.status === "Cancelado") return false;
 
-      // Normaliza a data que vem da lista (ex: "15/02/2026 10:00" -> "2026-02-15")
+      const blocoExistente = f.id_unidade?.toString().charAt(0);
       let dataExistenteISO = "";
+
+      // Normalização da data para comparação YYYY-MM-DD
       if (f.data_mudanca.includes('/')) {
           const [d, m, y] = f.data_mudanca.split(' ')[0].split('/');
-          dataExistenteISO = `${y}-${m}-${d}`;
+          dataExistenteISO = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
       } else {
           dataExistenteISO = f.data_mudanca.split(' ')[0];
       }
 
-      // Só valida conflito se não for o próprio registro sendo editado
-      return dataExistenteISO === dataNovaISO && f.id?.toString() !== formData.id?.toString();
+      return (
+        dataExistenteISO === dataNovaISO && 
+        blocoExistente === blocoNovo && 
+        f.id?.toString() !== formData.id?.toString()
+      );
   });
 
   if (conflito) {
-      // Bloqueio total para Agendado, Confirmado ou Realizado
-      if (["Agendado", "Confirmado", "Realizado"].includes(conflito.status)) {
-          alert(`BLOQUEADO: Já existe uma mudança com status ${conflito.status} para este dia.`);
-          return; 
-      }
-
-      // Aviso para Pendente
       if (conflito.status === "Pendente") {
-          const confirmar = window.confirm(`AVISO: Já existe um agendamento PENDENTE para este dia. Deseja continuar mesmo assim?`);
+          const confirmar = window.confirm(`AVISO: O Bloco ${blocoNovo} já possui um agendamento PENDENTE (Unidade ${conflito.id_unidade}) para este dia. Deseja continuar?`);
           if (!confirmar) return; 
+      } else {
+          alert(`BLOQUEADO: O Bloco ${blocoNovo} já possui uma mudança com status ${conflito.status} neste dia.`);
+          return;
       }
   }
 
   // 3. PROCESSO DE ENVIO
-  setLoadingGlobal(true); 
+  setLoadingGlobal(true);
   
- const payload = { 
-  token: TOKEN, 
-  action: modalType === "add" ? "add" : "edit", 
-  sheet: "MUDANCAS",
-  id: modalType === "add" ? Date.now().toString() : formData.id.toString(),
-  
-  // Nomes corrigidos para bater com o que você relatou:
-  id_unidade: formData.id_unidade,      // Enviando id_unidade em vez de id_unidade
-  id_morador: idMoradorFinal,          // Enviando o ID se for cadastrado
-  morador: formData.morador,
-  contato: formData.contato,
-  data_mudanca: formData.data_mudanca, // Enviando data_mudanca em vez de data_mudanca
-  
-  cpf: formData.cpf || "",
-  rg: formData.rg || "",
-  tipo: formData.tipo || "Entrada",
-  periodo: formData.periodo || "Manhã",
-  status: formData.status || "Pendente",
-  obs: formData.obs || "",
-  user: user?.nome || "Sistema"
-};
+  const payload = { 
+    token: TOKEN, 
+    action: modalType === "add" ? "add" : "edit", 
+    sheet: "MUDANCAS",
+    id: modalType === "add" ? Date.now().toString() : formData.id.toString(),
+    
+    // Mapeamento exato das colunas do seu Google Sheets
+    id_unidade: formData.id_unidade,
+    id_morador: idMoradorFinal,
+    morador: formData.morador,
+    cpf: formData.cpf || "",
+    rg: formData.rg || "",
+    contato: formData.contato,
+    periodo: formData.periodo || "Manhã",
+    data_mudanca: formData.data_mudanca.replace("T", " "), // Formato amigável para a célula
+    status: formData.status || "Pendente",
+    tipo: formData.tipo || "Entrada",
+    data_preenchimento: new Date().toLocaleString("pt-BR"),
+    obs: formData.obs || "",
+    data_fim: formData.data_fim.replace("T", " "), // Enviando o horário final
+    user: user?.nome || "Sistema"
+  };
 
   try {
     const response = await fetch(API_URL, {
@@ -457,17 +485,18 @@ const exportToPDF = () => {
     if(result.status === "success" || result.success) {
       setShowModal(false);
       await fetchData(); 
-      // Limpa o formulário
+      
+      // Limpa o formulário incluindo o novo campo
       setFormData({
-        id_unidade: "", morador: "", contato: "", data_mudanca: "",
-        status: "Pendente", cpf: "", rg: "", tipo: "Entrada", periodo: "Manhã"
+        id_unidade: "", morador: "", contato: "", data_mudanca: "", data_fim: "",
+        status: "Pendente", cpf: "", rg: "", tipo: "Entrada", periodo: "Manhã", obs: "",
       });
     } else {
       alert("Erro: " + result.message);
     }
   } catch (error) { 
     console.error(error);
-    alert("Erro ao conectar com a planilha. Verifique sua conexão."); 
+    alert("Erro ao conectar com a planilha."); 
   } finally { 
     setLoadingGlobal(false); 
   }
@@ -520,6 +549,27 @@ const exportToPDF = () => {
     setIsMoradorCadastrado(checked);
     setFormData({ ...formData, morador: "", contato: "", cpf: "", rg: "" });
   };
+
+  const handleEdit = (mudanca) => {
+  setModalType("edit");
+  
+  // Verifica se o morador já tem ID para marcar o toggle corretamente
+  setIsMoradorCadastrado(!!mudanca.id_morador);
+
+  setFormData({
+    ...mudanca,
+    // Aplica a formatação nas duas datas para elas aparecerem nos inputs
+    data_mudanca: formatToInputDateTime(mudanca.data_mudanca),
+    data_fim: formatToInputDateTime(mudanca.data_fim),
+    // Garante que campos opcionais não venham como undefined
+    obs: mudanca.obs || "",
+    cpf: mudanca.cpf || "",
+    rg: mudanca.rg || ""
+  });
+
+  setShowModal(true);
+  setShowMenuId(null); // Fecha o menu de opções (os três pontinhos)
+};
 
   const formatCurrency = (val) => Number(val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -812,7 +862,7 @@ const itensExibidos = React.useMemo(() => {
 </button>
 
     <button 
-  style={{...btnNew, backgroundColor: '#10b981', flex: isMobile ? '1 1 100%' : 'none', justifyContent: 'center'}} 
+  style={{...btnNew, backgroundColor: '#3B82F6', flex: isMobile ? '1 1 100%' : 'none', justifyContent: 'center'}} 
   onClick={() => { 
     setModalType("add"); 
     setIsMoradorCadastrado(false); 
@@ -1045,16 +1095,24 @@ const itensExibidos = React.useMemo(() => {
                     {showMenuId === f.id && (
                         <div ref={menuRef} className="action-menu" style={{ right: '10px', top: '40px', zIndex: 100 }}>
                             <div className="menu-item" onClick={() => { 
-                                setModalType("edit"); 
-                                setFormData({
-                                    ...f, 
-                                    data_mudanca: formatToInputDate(f.data_mudanca || f.data_reserva)
-                                }); 
-                                setShowModal(true); 
-                                setShowMenuId(null); 
-                            }}>
-                                <Edit2 size={14} /> Editar
-                            </div>
+    setModalType("edit"); 
+    
+    // Importante: define se o morador é cadastrado para habilitar/desabilitar campos
+    setIsMoradorCadastrado(!!f.id_morador); 
+
+    setFormData({
+        ...f, 
+        // Agora a função limpa os segundos automaticamente
+        data_mudanca: formatToInputDateTime(f.data_mudanca),
+        data_fim: formatToInputDateTime(f.data_fim),
+        obs: f.obs || "" // Evita que o campo de observação venha como undefined
+    });
+    
+    setShowModal(true); 
+    setShowMenuId(null); 
+}}>
+    <Edit2 size={14} /> Editar
+</div>
                             
                             <div className="menu-item" style={{ color: '#ef4444' }} onClick={() => { handleDelete(f.id); setShowMenuId(null); }}>
                                 <Trash2 size={14} /> Excluir
@@ -1296,26 +1354,38 @@ const itensExibidos = React.useMemo(() => {
 </div>
         </div>
 
-        {/* Data e Telefone */}
-        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px'}}>
-          <div>
-            <label style={labelStyle}>Data da Mudança</label>
-            <input 
-              type="date" 
-              style={{...selectStyle, width:'100%', backgroundColor: theme.bg, color: theme.text, borderColor: theme.border}} 
-              value={formData.data_mudanca?.split('T')[0] || ""} 
-              onChange={e => setFormData({...formData, data_mudanca: e.target.value})} 
-            />
-          </div>
-          <div>
-            <label style={labelStyle}>Telefone Contato</label>
-            <input 
-              style={{...selectStyle, width:'100%', backgroundColor: theme.bg, color: theme.text, borderColor: theme.border}} 
-              value={formData.contato} 
-              onChange={e => setFormData({...formData, contato: maskPhone(e.target.value)})} 
-            />
-          </div>
-        </div>
+        {/* Seção de Horários (Início e Fim) */}
+<div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom: '15px'}}>
+  <div>
+    <label style={labelStyle}>Início da Mudança</label>
+    <input 
+      type="datetime-local" 
+      style={{...selectStyle, width:'100%', backgroundColor: theme.bg, color: theme.text, borderColor: theme.border}} 
+      value={formData.data_mudanca} 
+      onChange={e => setFormData({...formData, data_mudanca: e.target.value})} 
+    />
+  </div>
+  <div>
+    <label style={labelStyle}>Previsão de Término</label>
+    <input 
+      type="datetime-local" 
+      style={{...selectStyle, width:'100%', backgroundColor: theme.bg, color: theme.text, borderColor: theme.border}} 
+      value={formData.data_fim} 
+      onChange={e => setFormData({...formData, data_fim: e.target.value})} 
+    />
+  </div>
+</div>
+
+{/* Seção de Contato (Linha Única ou Grid com outro campo) */}
+<div style={{marginBottom: '15px'}}>
+  <label style={labelStyle}>Telefone Contato</label>
+  <input 
+    style={{...selectStyle, width:'100%', backgroundColor: theme.bg, color: theme.text, borderColor: theme.border}} 
+    value={formData.contato} 
+    onChange={e => setFormData({...formData, contato: maskPhone(e.target.value)})} 
+    placeholder="(00) 00000-0000"
+  />
+</div>
 
         {/* NOVOS CAMPOS: Tipo e Período */}
         <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px'}}>
@@ -1423,17 +1493,30 @@ const itensExibidos = React.useMemo(() => {
                 <strong>Contato:</strong> {selectedFesta.contato || "N/D"}
               </div>
 
-              {/* Dados da Mudança (Tipo e Período) */}
-              <div style={{...viewBox, backgroundColor: theme.bg, borderColor: theme.border}}>
-                <strong>Tipo / Sentido:</strong> {selectedFesta.tipo === 'Entrada' ? '⬆ Entrada' : '⬇ Saída'} <br/>
-                <strong>Data Programada:</strong> {(() => {
-                    const dataBruta = selectedFesta.data_mudanca;
-                    if (!dataBruta) return "-";
-                    const apenasData = dataBruta.toString().split(' ')[0];
-                    return apenasData.includes('-') ? apenasData.split('-').reverse().join('/') : apenasData;
-                })()} <br/>
-                <strong>Período / Turno:</strong> {selectedFesta.periodo || "Não informado"}
-              </div>
+              {/* Dados da Mudança (Horário Completo) */}
+<div style={{...viewBox, backgroundColor: theme.bg, borderColor: theme.border}}>
+  <strong>Tipo / Sentido:</strong> {selectedFesta.tipo === 'Entrada' ? '⬆ Entrada' : '⬇ Saída'} <br/>
+  
+  {/* Horários sem o box de fundo */}
+  <div style={{ marginTop: '10px' }}>
+    <div style={{ marginBottom: '4px' }}>
+      <strong style={{ fontSize: '13px' }}>Início:</strong> 
+      <span style={{ color: theme.text, marginLeft: '5px' }}>
+        {selectedFesta.data_mudanca || "-"}
+      </span>
+    </div>
+    <div style={{ marginBottom: '4px' }}>
+      <strong style={{ fontSize: '13px' }}>Fim:</strong> 
+      <span style={{ color: theme.text, marginLeft: '5px' }}>
+        {selectedFesta.data_fim || "Não informado"}
+      </span>
+    </div>
+  </div>
+
+  <div style={{ marginTop: '8px' }}>
+    <strong>Período / Turno:</strong> {selectedFesta.periodo || "Não informado"}
+  </div>
+</div>
 
               {/* Status e Observações */}
 <div style={{

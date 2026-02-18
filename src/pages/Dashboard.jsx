@@ -29,12 +29,12 @@ export default function Dashboard({ user }) {
       try {
         setLoading(true);
         const [resUnits, resLogs, resFestas, resChurras, resMudancas] = await Promise.all([
-          fetch(`${SHEETS_URL}?sheet=UNIDADES&token=${TOKEN}`),
-          fetch(`${SHEETS_URL}?sheet=log&token=${TOKEN}`),
-          fetch(`${SHEETS_URL}?sheet=FESTAS&token=${TOKEN}`),
-          fetch(`${SHEETS_URL}?sheet=CHURRASQUEIRA&token=${TOKEN}`),
-          fetch(`${SHEETS_URL}?sheet=MUDANCAS&token=${TOKEN}`)
-        ]);
+  fetch(`${SHEETS_URL}?token=${TOKEN}&sheet=UNIDADES`, { method: "GET", redirect: "follow" }),
+  fetch(`${SHEETS_URL}?token=${TOKEN}&sheet=log`, { method: "GET", redirect: "follow" }),
+  fetch(`${SHEETS_URL}?token=${TOKEN}&sheet=FESTAS`, { method: "GET", redirect: "follow" }),
+  fetch(`${SHEETS_URL}?token=${TOKEN}&sheet=CHURRASQUEIRA`, { method: "GET", redirect: "follow" }),
+  fetch(`${SHEETS_URL}?token=${TOKEN}&sheet=MUDANCAS`, { method: "GET", redirect: "follow" })
+]);
 
         const dataUnits = await resUnits.json();
         const dataLogs = await resLogs.json();
@@ -85,11 +85,12 @@ export default function Dashboard({ user }) {
             .slice(0, 4);
           setLogs(filteredLogs);
         }
-      } catch (err) {
-        console.error("Erro no Dashboard:", err);
-      } finally {
-        setLoading(false);
-      }
+      } catch (error) {
+  console.error("Erro dashboard:", error);
+} finally {
+  // O loading só sai da tela quando TUDO terminar ou falhar
+  setTimeout(() => setLoading(false), 500);
+}
     }
     if (user?.nome) fetchData();
   }, [user]);
@@ -116,6 +117,27 @@ export default function Dashboard({ user }) {
   </div>
 );
 }
+
+const CardLoading = () => {
+  const { theme } = useTheme();
+  return (
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      padding: '40px 0',
+      gap: '10px'
+    }}>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .inner-loader { animation: spin 1s linear infinite; }
+      `}</style>
+      <Loader2 className="inner-loader" size={30} color="#3b82f6" strokeWidth={1.5} />
+      <span style={{ fontSize: '12px', color: theme.textSecondary }}>Atualizando dados...</span>
+    </div>
+  );
+};
 
 /* ================= COMPONENTES DE INTERFACE ================= */
 
@@ -191,24 +213,37 @@ function RecentActivities({ logs, loading, theme }) {
 
   return (
     <div style={{ ...sectionCard, backgroundColor: theme.mainBg, borderColor: theme.border }}>
-      <h3 style={{ ...sectionTitle, color: theme.text }}>Atividades Recentes</h3>
-      {loading ? (
-        <div style={{ padding: "40px", textAlign: "center" }}><Loader2 className="spinner-anim" size={28} color="#3b82f6" /></div>
-      ) : logs.length === 0 ? (
-        <p style={{ textAlign: 'center', color: theme.textSecondary, padding: '20px', fontSize: '14px' }}>Nenhuma atividade recente.</p>
-      ) : (
-        logs.map((log, i) => (
-          <div key={i} style={{ ...activityItem, borderBottom: i === logs.length -1 ? 'none' : `1px solid ${theme.border}` }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={getTagStyle(log.modulo)}>{log.modulo}</span>
-              <span style={{ fontSize: '12px', color: theme.textSecondary }}>{formatTime(log.timestamp)}</span>
-            </div>
-            <div style={{ fontSize: '14px', color: theme.text, fontWeight: '500' }}>{log.descricao || `Ação realizada`}</div>
-          </div>
-        ))
-      )}
-      <button style={btnHistory}>Ver histórico completo</button>
+  <h3 style={{ ...sectionTitle, color: theme.text }}>Atividades Recentes</h3>
+  
+  {loading ? (
+    <div style={{ padding: "40px", textAlign: "center" }}>
+      {/* CSS em linha para garantir a animação */}
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .spinner-anim { animation: spin 1s linear infinite; }
+      `}</style>
+      <Loader2 className="spinner-anim" size={28} color="#3b82f6" />
     </div>
+  ) : logs.length === 0 ? (
+    <p style={{ textAlign: 'center', color: theme.textSecondary, padding: '20px', fontSize: '14px' }}>
+      Nenhuma atividade recente.
+    </p>
+  ) : (
+    logs.map((log, i) => (
+      <div key={i} style={{ ...activityItem, borderBottom: i === logs.length - 1 ? 'none' : `1px solid ${theme.border}` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <span style={getTagStyle(log.modulo)}>{log.modulo}</span>
+          <span style={{ fontSize: '12px', color: theme.textSecondary }}>{formatTime(log.timestamp)}</span>
+        </div>
+        <div style={{ fontSize: '14px', color: theme.text, fontWeight: '500' }}>
+          {log.descricao || `Ação realizada`}
+        </div>
+      </div>
+    ))
+  )}
+  
+  <button style={btnHistory}>Ver histórico completo</button>
+</div>
   );
 }
 

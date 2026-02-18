@@ -110,26 +110,34 @@ export default function Moradores() {
   }, []);
 
   const fetchData = async () => {
-    try {
-      setLoadingInitial(true);
-      const [resMorad, resUnits, resVagas] = await Promise.all([
-        fetch(`${SHEETS_URL}?sheet=MORADORES&token=${TOKEN}`),
-        fetch(`${SHEETS_URL}?sheet=UNIDADES&token=${TOKEN}`),
-        fetch(`${SHEETS_URL}?sheet=VAGAS&token=${TOKEN}`) // <-- BUSCA AS VAGAS
-      ]);
-      const dataMorad = await resMorad.json();
-      const dataUnits = await resUnits.json();
-      const dataVagas = await resVagas.json(); // <-- PEGA O JSON
+  try {
+    setLoadingInitial(true);
+    
+    // Adicionamos as configurações de CORS/Redirect em cada fetch do Promise.all
+    const [resMorad, resUnits, resVagas] = await Promise.all([
+      fetch(`${SHEETS_URL}?sheet=MORADORES&token=${TOKEN}`, { method: "GET", redirect: "follow" }),
+      fetch(`${SHEETS_URL}?sheet=UNIDADES&token=${TOKEN}`, { method: "GET", redirect: "follow" }),
+      fetch(`${SHEETS_URL}?sheet=VAGAS&token=${TOKEN}`, { method: "GET", redirect: "follow" })
+    ]);
 
-      setMoradores(Array.isArray(dataMorad) ? dataMorad : []);
-      setUnidadesExistentes(Array.isArray(dataUnits) ? dataUnits : []);
-      setVagas(Array.isArray(dataVagas) ? dataVagas : []); // <-- SALVA NO ESTADO
-    } catch (err) { 
-      console.error("Erro fetch:", err); 
-    } finally { 
-      setLoadingInitial(false); 
-    }
-  };
+    // Processamento dos JSONs
+    const dataMorad = await resMorad.json();
+    const dataUnits = await resUnits.json();
+    const dataVagas = await resVagas.json();
+
+    setMoradores(Array.isArray(dataMorad) ? dataMorad : []);
+    setUnidadesExistentes(Array.isArray(dataUnits) ? dataUnits : []);
+    setVagas(Array.isArray(dataVagas) ? dataVagas : []);
+    
+  } catch (err) { 
+    console.error("Erro fetch CORS:", err); 
+  } finally { 
+    // Delay opcional para suavizar o fim do loading
+    setTimeout(() => {
+      setLoadingInitial(false);
+    }, 300);
+  }
+};
 
   const formatarIDExibicao = (id) => {
   const unidade = unidadesExistentes.find(u => String(u.id) === String(id));
@@ -435,7 +443,7 @@ tbody tr:last-child td {
     <button style={{...btnWhite, backgroundColor: theme.mainBg, borderColor: theme.border, color: theme.textSecondary, flex: isMobile ? '1 1 auto' : 'none'}} onClick={() => { setSearchNome(""); setFilterVinculo("Todos"); setFilterStatus("Todos"); setFilterTipoMorador("Todos") }}>
       <RotateCcw size={18} /> Redefinir
     </button>
-    <button style={{...btnNew, flex: isMobile ? '1 1 100%' : 'none', justifyContent: 'center'}} onClick={() => { setModalType("add"); setUnitSearch(""); setFormData({id:"", id_unidade:"", nome:"", cpf:"", rg:"", tipo_vinculo:"Proprietário", telefone:"", email:"", data_entrada:"", data_saida:"", status:"Ativo"}); setShowModal(true); }}>
+    <button style={{...btnNew, flex: isMobile ? '1 1 100%' : 'none', justifyContent: 'center'}} onClick={() => { setModalType("add"); setUnitSearch(""); setFormData({id:"", id_unidade:"", nome:"", cpf:"", rg:"", tipo_vinculo:"Proprietário", tipo_morador: "Titular", telefone:"", email:"", data_entrada:"", data_saida:"", status:"Ativo"}); setShowModal(true); }}>
       <Plus size={18} /> Novo Morador
     </button>
   </div>
@@ -544,14 +552,19 @@ tbody tr:last-child td {
       <thead>
   <tr style={{...thRow, borderBottomColor: theme.border}}>
     {['id_unidade', 'nome', 'tipo_vinculo', 'contato', 'tipo_morador', 'status'].map(key => (
-       <th key={key} style={{...thStyle, backgroundColor: theme.isDark ? '#1e293b' : '#f8fafc', color: theme.textSecondary,}} onClick={() => setSortConfig({key: key === 'contato' ? 'telefone' : key, direction: sortConfig.direction === 'asc' ? 'desc' : 'asc'})}>
-          <div style={thFlex}>
-            {key === 'id_unidade' ? 'Unidade' : key === 'tipo_vinculo' ? 'Vínculo' : key === 'tipo_morador' ? 'Morador' : key.charAt(0).toUpperCase() + key.slice(1)}
-            {sortConfig.key === (key === 'contato' ? 'telefone' : key) && (sortConfig.direction === 'asc' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>)}
-          </div>
-       </th>
-    ))}
-    <th style={{ ...thStyle, backgroundColor: theme.isDark ? '#1e293b' : '#f8fafc', color: theme.textSecondary, textAlign: 'right' }}>Ações</th>
+   <th key={key} style={{...thStyle, backgroundColor: theme.isDark ? '#1e293b' : '#f8fafc', color: theme.textSecondary,}} onClick={() => setSortConfig({key: key === 'contato' ? 'telefone' : key, direction: sortConfig.direction === 'asc' ? 'desc' : 'asc'})}>
+      <div style={thFlex}>
+        {/* Lógica simplificada: se for uma das chaves especiais, usa o nome fixo, senão coloca a chave em maiúsculo */}
+        {key === 'id_unidade'  ? 'UNIDADE' : 
+         key === 'tipo_vinculo'? 'VÍNCULO' : 
+         key === 'tipo_morador'? 'MORADOR' : 
+         key.toUpperCase()}
+        
+        {sortConfig.key === (key === 'contato' ? 'telefone' : key) && (sortConfig.direction === 'asc' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>)}
+      </div>
+   </th>
+))}
+    <th style={{ ...thStyle, backgroundColor: theme.isDark ? '#1e293b' : '#f8fafc', color: theme.textSecondary, textAlign: 'right' }}>AÇÕES</th>
   </tr>
 </thead>
 <tbody>

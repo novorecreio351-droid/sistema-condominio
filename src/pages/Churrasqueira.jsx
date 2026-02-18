@@ -211,43 +211,49 @@ const formatDateTimeForInput = (dateTimeStr) => {
     };
   }, []);
 
-  const fetchData = async () => {
-    try {
-      setLoadingInitial(true);
-      const [resFestas, resUnidades, resMoradores, resUploads] = await Promise.all([
-        fetch(`${API_URL}?token=${TOKEN}&sheet=CHURRASQUEIRA`).then(r => r.json()),
-        fetch(`${API_URL}?token=${TOKEN}&sheet=UNIDADES`).then(r => r.json()),
-        fetch(`${API_URL}?token=${TOKEN}&sheet=MORADORES`).then(r => r.json()),
+ const fetchData = async () => {
+  try {
+    setLoadingInitial(true);
+    
+    // Adicionamos { method: "GET", redirect: "follow" } em cada fetch
+    const [resFestas, resUnidades, resMoradores, resUploads] = await Promise.all([
+      fetch(`${API_URL}?token=${TOKEN}&sheet=CHURRASQUEIRA`, { method: "GET", redirect: "follow" }).then(r => r.json()),
+      fetch(`${API_URL}?token=${TOKEN}&sheet=UNIDADES`, { method: "GET", redirect: "follow" }).then(r => r.json()),
+      fetch(`${API_URL}?token=${TOKEN}&sheet=MORADORES`, { method: "GET", redirect: "follow" }).then(r => r.json()),
+      fetch(`${API_URL}?token=${TOKEN}&sheet=UPLOADS_CHURRASQUEIRA`, { method: "GET", redirect: "follow" }).then(r => r.json()),
+    ]);
 
-        fetch(`${API_URL}?token=${TOKEN}&sheet=UPLOADS_CHURRASQUEIRA`).then(r => r.json()),
-      ]);
+    const listaFestas = Array.isArray(resFestas) ? resFestas : [];
+    const listaUploads = Array.isArray(resUploads) ? resUploads : [];
+    
+    setUploads(listaUploads);
 
-      const listaFestas = Array.isArray(resFestas) ? resFestas : [];
-      const listaUploads = Array.isArray(resUploads) ? resUploads : [];
-      
-      setUploads(listaUploads);
+    // Mapeia os registros vinculando a foto/comprovante
+    const festasComUpload = listaFestas.map(f => {
+      const fotoUrl = getFotoFestaInterno(f.id, listaUploads);
+      return { ...f, foto: fotoUrl };
+    });
 
-      // Mapeia as festas vinculando a foto na carga inicial para facilitar a listagem
-      const festasComUpload = listaFestas.map(f => {
-        const fotoUrl = getFotoFestaInterno(f.id, listaUploads);
-        return { ...f, foto: fotoUrl };
-      });
+    setFestas(festasComUpload);
+    verificarEAtualizarStatus(festasComUpload);
 
-      setFestas(festasComUpload);
+    const sortedUnidades = Array.isArray(resUnidades) ? [...resUnidades].sort((a, b) => {
+      if (a.bloco !== b.bloco) return String(a.bloco).localeCompare(String(b.bloco), undefined, {numeric: true});
+      return String(a.unidade).localeCompare(String(b.unidade), undefined, {numeric: true});
+    }) : [];
 
-      // ... dentro da função fetchData()
-    verificarEAtualizarStatus(festasComUpload); // Adicione esta linha
-
-      const sortedUnidades = Array.isArray(resUnidades) ? [...resUnidades].sort((a, b) => {
-        if (a.bloco !== b.bloco) return String(a.bloco).localeCompare(String(b.bloco), undefined, {numeric: true});
-        return String(a.unidade).localeCompare(String(b.unidade), undefined, {numeric: true});
-      }) : [];
-
-      setUnidades(sortedUnidades);
-      setMoradores(Array.isArray(resMoradores) ? resMoradores : []);
-    } catch (error) { console.error(error); }
-    finally { setLoadingInitial(false); }
-  };
+    setUnidades(sortedUnidades);
+    setMoradores(Array.isArray(resMoradores) ? resMoradores : []);
+    
+  } catch (error) { 
+    console.error("Erro CORS no módulo de Churrasqueira:", error); 
+  } finally { 
+    // Suavização do loading
+    setTimeout(() => {
+      setLoadingInitial(false);
+    }, 300);
+  }
+};
 
   const maskRG = (v) => {
   v = v.replace(/\D/g, ""); // Remove tudo que não é número
@@ -1310,7 +1316,7 @@ const itensExibidos = React.useMemo(() => {
   <RotateCcw size={18} /> Redefinir
 </button>
 
-    <button style={{...btnNew, backgroundColor: '#10b981', flex: isMobile ? '1 1 100%' : 'none', justifyContent: 'center'}} onClick={() => { 
+    <button style={{...btnNew, backgroundColor: '#3B82F6', flex: isMobile ? '1 1 100%' : 'none', justifyContent: 'center'}} onClick={() => { 
       setModalType("add"); 
       setIsMoradorCadastrado(false); 
       setFormData({unidade_id: "", morador: "", contato: "", data_reserva: "", valor_taxa: "", pago: "Não", status: "Pendente", cpf: "", convidados: "", foto: ""}); 
