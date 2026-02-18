@@ -91,19 +91,37 @@ export default function Vagas({ user }) {
   }, []);
 
   const fetchData = async () => {
-    try {
-      setLoadingInitial(true);
-      const [resVagas, resUnidades, resTags] = await Promise.all([
-        fetch(`${API_URL}?token=${TOKEN}&sheet=VAGAS`).then(r => r.json()),
-        fetch(`${API_URL}?token=${TOKEN}&sheet=UNIDADES`).then(r => r.json()),
-        fetch(`${API_URL}?token=${TOKEN}&sheet=TAGS`).then(r => r.json())
-      ]);
-      setVagas(Array.isArray(resVagas) ? resVagas : []);
-      setUnidades(Array.isArray(resUnidades) ? resUnidades : []);
-      setTags(Array.isArray(resTags) ? resTags : []);
-    } catch (error) { console.error(error); }
-    finally { setLoadingInitial(false); }
-  };
+  try {
+    setLoadingInitial(true);
+    const [resVagas, resUnidades, resTags] = await Promise.all([
+      fetch(`${API_URL}?token=${TOKEN}&sheet=VAGAS`, { 
+        method: "GET", 
+        redirect: "follow" 
+      }).then(r => r.json()),
+      
+      fetch(`${API_URL}?token=${TOKEN}&sheet=UNIDADES`, { 
+        method: "GET", 
+        redirect: "follow" 
+      }).then(r => r.json()),
+      
+      fetch(`${API_URL}?token=${TOKEN}&sheet=TAGS`, { 
+        method: "GET", 
+        redirect: "follow" 
+      }).then(r => r.json())
+    ]);
+
+    setVagas(Array.isArray(resVagas) ? resVagas : []);
+    setUnidades(Array.isArray(resUnidades) ? resUnidades : []);
+    setTags(Array.isArray(resTags) ? resTags : []);
+  } catch (error) { 
+    console.error("Erro na busca de dados (CORS/Redirect):", error); 
+  } finally { 
+    // Mantendo o padrão de suavização que usamos nos outros
+    setTimeout(() => {
+      setLoadingInitial(false);
+    }, 300);
+  }
+};
 
   // --- FUNÇÕES DE EXPORTAÇÃO ---
 
@@ -601,17 +619,16 @@ const btnWhite = {
       minWidth: isMobile ? '900px' : '100%', // Mantém espaço para todas as colunas no mobile
       borderCollapse: 'collapse'
     }}>
-      <thead>
-        <tr style={{...thRow, borderBottomColor: theme.border, backgroundColor: theme.isDark ? '#1e293b' : '#f8fafc'}}>
-          <th style={thStyle}>Unidade</th>
-          <th style={thStyle}>Veículos</th>
-          <th style={thStyle}>Veículo / Placas</th>
-          <th style={thStyle}>Observações</th>
-          <th style={thStyle}>Tag de Acesso</th>
-          <th style={thStyle}>Status</th>
-          <th style={{...thStyle, textAlign: 'right'}}>Ações</th>
-        </tr>
-      </thead>
+     <thead>
+  <tr style={{...thRow, borderBottomColor: theme.border, backgroundColor: theme.isDark ? '#1e293b' : '#f8fafc'}}>
+    <th style={{...thStyle, color: theme.textSecondary}}>UNIDADE</th>
+    <th style={{...thStyle, color: theme.textSecondary}}>VEÍCULOS</th>
+    <th style={{...thStyle, color: theme.textSecondary}}>VEÍCULO / PLACAS</th>
+    <th style={{...thStyle, color: theme.textSecondary}}>TAG DE ACESSO</th>
+    <th style={{...thStyle, color: theme.textSecondary}}>STATUS</th>
+    <th style={{...thStyle, color: theme.textSecondary, textAlign: 'right'}}>AÇÕES</th>
+  </tr>
+</thead>
       <tbody>
         {unidadesExibidas.map((v, idx) => {
           const unit = unidades.find(u => u.id?.toString() === v.id_unidade?.toString());
@@ -628,14 +645,10 @@ const btnWhite = {
                 </div>
               </td>
 
-              <td style={{ ...tdStyle, color: theme.textSecondary, fontSize: '12px' }}>
-                {v.possui_carro === "Sim" && <div>{v.modelo_carro} | <strong>{v.placa_carro}</strong></div>}
-                {v.possui_moto === "Sim" && <div>{v.modelo_moto} | <strong>{v.placa_moto}</strong></div>}
-              </td>
-
-              <td style={{ ...tdStyle, color: theme.textSecondary, fontSize: '12px', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {v.observacoes || "-"}
-              </td>
+              <td style={{ ...tdStyle, color: theme.text, fontSize: '12px' }}>
+  {v.possui_carro === "Sim" && <div>{v.modelo_carro} | <strong>{v.placa_carro}</strong></div>}
+  {v.possui_moto === "Sim" && <div>{v.modelo_moto} | <strong>{v.placa_moto}</strong></div>}
+</td>
 
               <td style={tdStyle}>{getTagStatusBadge(v.id_unidade)}</td>
 

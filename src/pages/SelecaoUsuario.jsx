@@ -1,4 +1,5 @@
 /* eslint-disable no-unused-vars */
+import { useNavigate } from "react-router-dom";
 import React, { useState, useEffect } from "react";
 import { UserCheck, ShieldCheck, ArrowRight, Building2, Lock, Loader2, ChevronLeft } from "lucide-react";
 
@@ -6,6 +7,7 @@ const TOKEN = import.meta.env.VITE_SHEETS_TOKEN;
 const API_URL = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8epZMJIhCmapSOxyTegLMSEGZ2jBMGIxQ4cJb4a23oveAAaW/exec";
 
 export default function SelecaoUsuario({ onSelectUser }) {
+  const navigate = useNavigate();
   const [usuarios, setUsuarios] = useState([]);
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [hovered, setHovered] = useState(null);
@@ -40,6 +42,11 @@ export default function SelecaoUsuario({ onSelectUser }) {
 
     fetchUsuarios();
   }, []);
+
+  const loginFunc = (user) => {
+  onSelectUser(user);
+  navigate("/dashboard"); // Isso força a URL a ficar correta logo após o clique
+};
 
   const handleLogin = async (e) => {
     e.preventDefault();

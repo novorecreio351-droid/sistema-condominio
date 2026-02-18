@@ -210,42 +210,48 @@ const formatDateTimeForInput = (dateTimeStr) => {
 }, []);
 
   const fetchData = async () => {
-    try {
-      setLoadingInitial(true);
-      const [resFestas, resUnidades, resMoradores, resUploads] = await Promise.all([
-        fetch(`${API_URL}?token=${TOKEN}&sheet=FESTAS`).then(r => r.json()),
-        fetch(`${API_URL}?token=${TOKEN}&sheet=UNIDADES`).then(r => r.json()),
-        fetch(`${API_URL}?token=${TOKEN}&sheet=MORADORES`).then(r => r.json()),
+  try {
+    setLoadingInitial(true);
+    
+    // Adicionamos { method: "GET", redirect: "follow" } em cada requisição
+    const [resFestas, resUnidades, resMoradores, resUploads] = await Promise.all([
+      fetch(`${API_URL}?token=${TOKEN}&sheet=FESTAS`, { method: "GET", redirect: "follow" }).then(r => r.json()),
+      fetch(`${API_URL}?token=${TOKEN}&sheet=UNIDADES`, { method: "GET", redirect: "follow" }).then(r => r.json()),
+      fetch(`${API_URL}?token=${TOKEN}&sheet=MORADORES`, { method: "GET", redirect: "follow" }).then(r => r.json()),
+      fetch(`${API_URL}?token=${TOKEN}&sheet=UPLOADS_FESTAS`, { method: "GET", redirect: "follow" }).then(r => r.json()),
+    ]);
 
-        fetch(`${API_URL}?token=${TOKEN}&sheet=UPLOADS_FESTAS`).then(r => r.json()),
-      ]);
+    const listaFestas = Array.isArray(resFestas) ? resFestas : [];
+    const listaUploads = Array.isArray(resUploads) ? resUploads : [];
+    
+    setUploads(listaUploads);
 
-      const listaFestas = Array.isArray(resFestas) ? resFestas : [];
-      const listaUploads = Array.isArray(resUploads) ? resUploads : [];
-      
-      setUploads(listaUploads);
+    // Mapeia as festas vinculando a foto na carga inicial para facilitar a listagem
+    const festasComUpload = listaFestas.map(f => {
+      const fotoUrl = getFotoFestaInterno(f.id, listaUploads);
+      return { ...f, foto: fotoUrl };
+    });
 
-      // Mapeia as festas vinculando a foto na carga inicial para facilitar a listagem
-      const festasComUpload = listaFestas.map(f => {
-        const fotoUrl = getFotoFestaInterno(f.id, listaUploads);
-        return { ...f, foto: fotoUrl };
-      });
+    setFestas(festasComUpload);
+    verificarEAtualizarStatus(festasComUpload);
 
-      setFestas(festasComUpload);
+    const sortedUnidades = Array.isArray(resUnidades) ? [...resUnidades].sort((a, b) => {
+      if (a.bloco !== b.bloco) return String(a.bloco).localeCompare(String(b.bloco), undefined, {numeric: true});
+      return String(a.unidade).localeCompare(String(b.unidade), undefined, {numeric: true});
+    }) : [];
 
-      // ... dentro da função fetchData()
-    verificarEAtualizarStatus(festasComUpload); // Adicione esta linha
-
-      const sortedUnidades = Array.isArray(resUnidades) ? [...resUnidades].sort((a, b) => {
-        if (a.bloco !== b.bloco) return String(a.bloco).localeCompare(String(b.bloco), undefined, {numeric: true});
-        return String(a.unidade).localeCompare(String(b.unidade), undefined, {numeric: true});
-      }) : [];
-
-      setUnidades(sortedUnidades);
-      setMoradores(Array.isArray(resMoradores) ? resMoradores : []);
-    } catch (error) { console.error(error); }
-    finally { setLoadingInitial(false); }
-  };
+    setUnidades(sortedUnidades);
+    setMoradores(Array.isArray(resMoradores) ? resMoradores : []);
+    
+  } catch (error) { 
+    console.error("Erro no carregamento (CORS/Redirect):", error); 
+  } finally { 
+    // Delay de 300ms para evitar o "salto" visual na tabela
+    setTimeout(() => {
+      setLoadingInitial(false);
+    }, 300);
+  }
+};
   const gerarContratoPDF = (f) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -1044,26 +1050,48 @@ const getFotosFestaInterno = (festaId, listaDeUploads) => {
   return resultado;
 }, [festas, searchTerm, filterStatus, filterPago, filterDivergencia, filterPeriodo]);
 
+const dadosOrdenados = React.useMemo(() => {
+  // Substitua 'dadosFiltrados' pelo nome do array que você usa para listar na tabela
+  let itens = [...dadosFiltrados]; 
+
+  if (sortConfig.length > 0) {
+    const { key, direction } = sortConfig[0];
+
+    itens.sort((a, b) => {
+      let valA = a[key] || "";
+      let valB = b[key] || "";
+
+      // TRATAMENTO ESPECIAL PARA DATAS (formato DD/MM/YYYY)
+      if (key === 'data_reserva') {
+        const converterParaData = (str) => {
+          if (!str) return new Date(0);
+          const [data] = str.split(' ');
+          const [dia, mes, ano] = data.split('/');
+          return new Date(ano, mes - 1, dia);
+        };
+        valA = converterParaData(valA);
+        valB = converterParaData(valB);
+      }
+
+      // Ordenação padrão para texto/número
+      if (valA < valB) return direction === 'asc' ? -1 : 1;
+      if (valA > valB) return direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+  return itens;
+}, [dadosFiltrados, sortConfig]); // Recalcula se os dados ou a config mudarem
+
 // --- 3. RE-DECLARAÇÃO DAS VARIÁVEIS DE PAGINAÇÃO (Resolve os erros de undefined) ---
 const totalPages = Math.ceil(dadosFiltrados.length / (itemsPerPage === "Todos" ? dadosFiltrados.length : itemsPerPage));
 
-const handleSort = (key, isShiftPressed) => {
-  setSortConfig(prev => {
-    let newConfig = [...prev];
-    const index = newConfig.findIndex(c => c.key === key);
-
-    if (index > -1) {
-      if (newConfig[index].direction === 'asc') {
-        newConfig[index] = { key, direction: 'desc' };
-      } else {
-        newConfig.splice(index, 1);
-      }
-    } else {
-      const newItem = { key, direction: 'asc' };
-      newConfig = isShiftPressed ? [...newConfig, newItem] : [newItem];
-    }
-    return newConfig;
-  });
+const handleSort = (key) => {
+  let direction = 'asc';
+  // Se já estiver ordenando pela mesma coluna em 'asc', inverte para 'desc'
+  if (sortConfig[0]?.key === key && sortConfig[0]?.direction === 'asc') {
+    direction = 'desc';
+  }
+  setSortConfig([{ key, direction }]);
 };
 
 const itensExibidos = React.useMemo(() => {
@@ -1221,7 +1249,7 @@ const itensExibidos = React.useMemo(() => {
   <RotateCcw size={18} /> Redefinir
 </button>
 
-    <button style={{...btnNew, backgroundColor: '#10b981', flex: isMobile ? '1 1 100%' : 'none', justifyContent: 'center'}} onClick={() => { 
+    <button style={{...btnNew, backgroundColor: '#3B82F6', flex: isMobile ? '1 1 100%' : 'none', justifyContent: 'center'}} onClick={() => { 
       setModalType("add"); 
       setIsMoradorCadastrado(false); 
       setFormData({unidade_id: "", morador: "", contato: "", data_reserva: "", valor_taxa: "", pago: "Não", status: "Pendente", cpf: "", convidados: "", foto: ""}); 
@@ -1391,7 +1419,7 @@ const itensExibidos = React.useMemo(() => {
   </tr>
 </thead>
                 <tbody>
-                    {itensExibidos.map((f) => {
+                    {dadosOrdenados.map((f) => {
                         const unit = unidades.find(u => u.id?.toString() === f.unidade_id?.toString());
                         return (
                             <tr key={f.id} style={{ ...trStyle, borderBottom: `1px solid ${theme.border}` }}>

@@ -75,14 +75,23 @@ React.useEffect(() => {
   }, []);
 
   const fetchUnidades = async () => {
-    try {
-      setLoadingInitial(true);
-      const res = await fetch(`${SHEETS_URL}?sheet=UNIDADES&token=${TOKEN}`);
-      const data = await res.json();
-      setUnidades(Array.isArray(data) ? data : []);
-    } catch (err) { console.error("Erro ao buscar unidades:", err); } 
-    finally { setLoadingInitial(false); }
-  };
+  try {
+    setLoadingInitial(true);
+    // Adicionamos o objeto de configuração com o redirect e o method
+    const res = await fetch(`${SHEETS_URL}?sheet=UNIDADES&token=${TOKEN}`, {
+      method: "GET",
+      redirect: "follow" // CRUCIAL para evitar erro de CORS no Google Apps Script
+    });
+
+    const data = await res.json();
+    setUnidades(Array.isArray(data) ? data : []);
+  } catch (err) { 
+    console.error("Erro ao buscar unidades:", err); 
+  } finally { 
+    // Opcional: pequeno delay de 300ms para renderização suave
+    setTimeout(() => setLoadingInitial(false), 300); 
+  }
+};
 
   const formatarMoeda = (valor) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor || 0);
@@ -122,23 +131,53 @@ React.useEffect(() => {
   useEffect(() => { setCurrentPage(1); }, [searchUnidade, filterBloco, filterOcupado, filterStatus, itemsPerPage]);
 
   const handleSave = async () => {
-    if (!formData.bloco || !formData.unidade) return alert("Preencha Bloco e Unidade");
+    // 1. Validação de campos obrigatórios
+    if (!formData.bloco || !formData.unidade) {
+      return alert("Preencha Bloco e Unidade");
+    }
+
+    // 2. Bloqueio de duplicados (Apenas na criação de novas unidades)
+    if (modalType === "add") {
+      const unidadeDuplicada = unidades.find(
+        (u) => 
+          u.bloco.toString() === formData.bloco.toString() && 
+          u.unidade.toString() === formData.unidade.toString()
+      );
+
+      if (unidadeDuplicada) {
+        return alert(`Erro: A unidade ${formData.unidade} do Bloco ${formData.bloco} já está cadastrada.`);
+      }
+    }
+
+    // 3. Preparação do payload
     const valorLimpo = String(formData.valor).replace(/\./g, '').replace(',', '.');
     const payload = { 
-      token: TOKEN, action: modalType, user: currentUser.nome,
+      token: TOKEN, 
+      action: modalType, 
+      user: currentUser.nome,
       id: modalType === "add" ? `${formData.bloco}${formData.unidade}` : formData.id, 
-      bloco: formData.bloco, unidade: formData.unidade, ocupado: formData.ocupado,
-      status: formData.status, valor: formData.status === "Inadimplente" ? (parseFloat(valorLimpo) || 0) : 0 
+      bloco: formData.bloco, 
+      unidade: formData.unidade, 
+      ocupado: formData.ocupado,
+      status: formData.status, 
+      valor: formData.status === "Inadimplente" ? (parseFloat(valorLimpo) || 0) : 0 
     };
 
     setLoadingGlobal(true);
     try {
-      await fetch(SHEETS_URL, { method: "POST", body: JSON.stringify(payload), redirect: "follow" });
+      await fetch(SHEETS_URL, { 
+        method: "POST", 
+        body: JSON.stringify(payload), 
+        redirect: "follow" 
+      });
       await fetchUnidades();
       setShowModal(false);
-    } catch (err) { alert("Erro ao salvar dados."); } finally { setLoadingGlobal(false); }
+    } catch (err) { 
+      alert("Erro ao salvar dados."); 
+    } finally { 
+      setLoadingGlobal(false); 
+    }
   };
-
   const handleDelete = async (id) => {
     if (!confirm("Tem certeza que deseja excluir esta unidade?")) return;
     setLoadingGlobal(true);
@@ -227,7 +266,9 @@ React.useEffect(() => {
       }}>
         <div>
           <h1 style={{...titleStyle, color: theme.text}}>Unidades</h1>
-          
+          <p style={{ margin: "4px 0 0 0", fontSize: "14px", color: theme.textSecondary }}>
+            Gerencie os blocos, apartamentos e o status de ocupação do condomínio.
+          </p>
           <p style={{ margin: "8px 0 0 0", fontSize: "12px", color: theme.textSecondary }}>
             Logado como: <strong style={{ color: theme.text }}>{currentUser.nome}</strong>
           </p>
@@ -285,15 +326,37 @@ React.useEffect(() => {
       <div style={{...tableCard, backgroundColor: theme.mainBg, borderColor: theme.border}}>
         <table style={tableStyle}>
           <thead>
-            <tr style={{...thRow, borderBottomColor: theme.border}}>
-              {['bloco', 'unidade', 'ocupado', 'status', 'valor'].map(key => (
-                <th key={key} style={{...thStyle, backgroundColor: theme.isDark ? '#1e293b' : '#f8fafc', color: theme.textSecondary}} onClick={() => setSortConfig({key, direction: sortConfig.direction === 'asc' ? 'desc' : 'asc'})}>
-                  <div style={thFlex}>{key === 'valor' ? 'Dívida' : key.charAt(0).toUpperCase() + key.slice(1)} {sortConfig.key === key && (sortConfig.direction === 'asc' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>)}</div>
-                </th>
-              ))}
-              <th style={{ ...thStyle, backgroundColor: theme.isDark ? '#1e293b' : '#f8fafc', color: theme.textSecondary, textAlign: 'right' }}>Ações</th>
-            </tr>
-          </thead>
+  <tr style={{...thRow, borderBottomColor: theme.border}}>
+    {[
+      { id: 'bloco', label: 'Bloco' },
+      { id: 'unidade', label: 'Unidade' },
+      { id: 'ocupado', label: 'Ocupado' },
+      { id: 'status', label: 'Status' },
+      { id: 'valor', label: 'Dívida' }
+    ].map(col => (
+      <th 
+        key={col.id} 
+        style={{
+          ...thStyle, 
+          backgroundColor: theme.isDark ? '#1e293b' : '#f8fafc', 
+          color: theme.textSecondary
+        }} 
+        onClick={() => setSortConfig({
+          key: col.id, 
+          direction: sortConfig.key === col.id && sortConfig.direction === 'asc' ? 'desc' : 'asc'
+        })}
+      >
+        <div style={thFlex}>
+          {col.label} 
+          {sortConfig.key === col.id && (
+            sortConfig.direction === 'asc' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>
+          )}
+        </div>
+      </th>
+    ))}
+    <th style={{ ...thStyle, backgroundColor: theme.isDark ? '#1e293b' : '#f8fafc', color: theme.textSecondary, textAlign: 'right' }}>Ações</th>
+  </tr>
+</thead>
           <tbody>
             {unidadesExibidas.map((u) => (
               <tr key={u.id} style={{...trStyle, borderBottom: `1px solid ${theme.border}`}}>
