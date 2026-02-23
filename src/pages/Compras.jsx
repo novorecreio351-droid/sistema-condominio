@@ -131,7 +131,7 @@ export default function Compras({ user }) {
 });
 
 const [listaProdutos, setListaProdutos] = useState([]);
-const [tempProduto, setTempProduto] = useState({ nome: "", qtd: 1 });
+const [tempProduto, setTempProduto] = useState({ nome: "", qtd: 1, valor: "" });
 
   // 3. VARIÁVEIS DE FILTRAGEM (Calculadas primeiro)
   
@@ -187,34 +187,45 @@ const [tempProduto, setTempProduto] = useState({ nome: "", qtd: 1 });
   };
 
   const handleSave = async () => {
-  // Alteração na validação: agora checamos se há produtos na lista
   if (!formData.titulo_solicitacao || !formData.unidade || listaProdutos.length === 0) {
-    return alert("Preencha Título, Unidade e adicione pelo menos um produto.");
+    return alert("Preencha Título, Unidade e adicione produtos.");
   }
 
   setLoading(true);
   const isEditing = !!formData.id;
   const idGerado = isEditing ? formData.id : "COMP-" + Date.now();
 
+  // SEPARAÇÃO DE ARQUIVOS:
+  // 1. Novos: Strings que começam com "data:image" ou "data:application/pdf"
+  const novosArquivos = arquivos.filter(a => typeof a === 'string' && a.startsWith("data:"));
+  
+  // 2. Manter: Pegamos apenas os IDs (idUpload) dos arquivos que já existiam e continuam na lista
+  const arquivosManter = arquivos
+    .filter(a => a.isExisting)
+    .map(a => a.idUpload);
+
   try {
+    const valorTotal = listaProdutos.reduce((acc, curr) => acc + (Number(curr.valor) * Number(curr.qtd || 1)), 0);
+
     const payload = {
       token: TOKEN,
-      // Sugestão: use uma action específica ou trate o array 'itens' no App Script
-      action: isEditing ? "edit" : "add", 
+      action: isEditing ? "edit" : "add",
       sheet: "COMPRAS",
       id: idGerado,
-      user: currentUser?.nome || "Sistema",
       ...formData,
-      // Removemos o campo 'produto' fixo e enviamos a nova lista
-      itens: listaProdutos, 
-      arquivos: arquivos
+      valor: valorTotal,
+      itens: listaProdutos.map(item => ({
+        produto: item.nome,
+        quantidade: item.qtd,
+        valor: item.valor
+      })),
+      
+      // Enviamos as duas listas para o App Script
+      arquivos: novosArquivos, 
+      arquivosManter: arquivosManter 
     };
 
-    await fetch(API_URL, { 
-      method: "POST", 
-      mode: "no-cors", 
-      body: JSON.stringify(payload) 
-    });
+    await fetch(API_URL, { method: "POST", mode: "no-cors", body: JSON.stringify(payload) });
 
     // Reset de estados após sucesso
     setShowModal(false);
@@ -300,6 +311,66 @@ const [tempProduto, setTempProduto] = useState({ nome: "", qtd: 1 });
   return () => window.removeEventListener('resize', handleResize);
 }, []);
 
+const fetchItensCompra = async (idCompra) => {
+  try {
+    const response = await fetch(`${API_URL}?token=${TOKEN}&sheet=COMPRAS_PRODUTOS`, { method: "GET" });
+    const data = await response.json();
+    if (Array.isArray(data)) {
+      // Filtra apenas os itens que pertencem a esta compra (ID_COMPRA é a segunda coluna)
+      return data.filter(item => item.id_compra === idCompra || item.ID_COMPRA === idCompra).map(item => ({
+        nome: item.produto || item.PRODUTO,
+        qtd: item.quantidade || item.QUANTIDADE,
+        valor: item.valor || item.VALOR
+      }));
+    }
+    return [];
+  } catch (error) {
+    console.error("Erro ao buscar itens:", error);
+    return [];
+  }
+};
+
+const fetchAnexosCompra = async (idCompra) => {
+  try {
+    const response = await fetch(`${API_URL}?token=${TOKEN}&sheet=UPLOADS_COMPRAS`, { method: "GET" });
+    const data = await response.json();
+    
+    if (Array.isArray(data)) {
+      // Filtramos e retornamos um objeto com o ID da linha e a URL do arquivo
+      return data
+        .filter(item => String(item.ID_COMPRAS || item.id_compras).trim() === String(idCompra).trim())
+        .map(item => ({
+          idUpload: item.ID || item.id, // ID da Coluna A (UPC-...)
+          url: item.URL_DRIVE || item.url_drive,
+          isExisting: true 
+        }));
+    }
+    return [];
+  } catch (error) {
+    console.error("Erro ao buscar anexos:", error);
+    return [];
+  }
+};
+
+const getGoogleDrivePreview = (file) => {
+  // Se for nulo ou indefinido
+  if (!file) return "";
+  
+  // Se for o objeto que criamos no fetch, extrai a propriedade .url
+  // Senão, usa o próprio valor (caso seja uma string direta)
+  const url = (typeof file === 'object' && file !== null) ? file.url : file;
+
+  if (typeof url !== "string") return "";
+
+  if (url.startsWith("data:")) return url;
+
+  // Extrai o ID do arquivo de links /file/d/... ou ?id=...
+  const fileIdMatch = url.match(/[-\w]{25,}/);
+  if (fileIdMatch) {
+    return `https://drive.google.com/thumbnail?id=${fileIdMatch[0]}&sz=w200`;
+  }
+  return url;
+};
 useEffect(() => {
   const handleClickOutside = (e) => {
     if (menuRef.current && !menuRef.current.contains(e.target)) {
@@ -310,18 +381,84 @@ useEffect(() => {
   return () => document.removeEventListener("mousedown", handleClickOutside);
 }, []);
 
-const handleEdit = (compra) => {
-  setSelectedCompra(compra);
-  setFormData({ ...compra });
-  setModalType("edit");
-  setShowModal(true);
-  setShowMenuId(null);
+const formatarDataParaInput = (dataString) => {
+  if (!dataString) return "";
+  try {
+    const str = String(dataString).trim();
+    if (str.includes("/")) {
+      const apenasData = str.split(" ")[0]; // Remove o 00:00:00
+      const [dia, mes, ano] = apenasData.split("/");
+      return `${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+    }
+    const d = new Date(dataString);
+    return !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : "";
+  } catch (e) { return ""; }
 };
 
-const handleView = (compra) => {
-  setSelectedCompra(compra);
-  setShowViewModal(true);
+const handleEdit = async (compra) => {
+  setLoading(true); // Começa o loading
+  try {
+    const [itens, anexos] = await Promise.all([
+      fetchItensCompra(compra.id),
+      fetchAnexosCompra(compra.id)
+    ]);
+    
+    setSelectedCompra(compra);
+    setFormData({ 
+      ...compra,
+      solicitado_data: formatarDataParaInput(compra.data_solicitacao || compra.solicitado_data) 
+    });
+    
+    setListaProdutos(itens);
+    setArquivos(anexos); 
+    setModalType("edit");
+    
+    setShowMenuId(null); 
+    
+    // PRIMEIRO: Manda o modal abrir
+    setShowModal(true);
+    
+    // SEGUNDO: Espera um micro-tempo para o React processar a abertura e só então tira o loading
+    setTimeout(() => {
+      setLoading(false);
+    }, 100);
+
+  } catch (error) {
+    console.error("Erro ao carregar dados para edição:", error);
+    alert("Erro ao carregar dados.");
+    setLoading(false);
+  }
+};
+
+const handleView = async (compra) => {
+  setLoading(true);
   setShowMenuId(null);
+  
+  try {
+    const [itens, anexos] = await Promise.all([
+      fetchItensCompra(compra.id),
+      fetchAnexosCompra(compra.id)
+    ]);
+    
+    setSelectedCompra({ 
+      ...compra, 
+      itensRelacionados: itens,
+      anexosRelacionados: anexos 
+    });
+    
+    // PRIMEIRO: Ativa a visualização do modal
+    setShowViewModal(true);
+    
+    // SEGUNDO: Só remove o loading após o comando de abrir o modal ser processado
+    setTimeout(() => {
+      setLoading(false);
+    }, 100);
+
+  } catch (error) {
+    console.error("Erro ao carregar detalhes:", error);
+    alert("Não foi possível carregar os detalhes.");
+    setLoading(false);
+  }
 };
 
 const handleGerarAprovacao = (item) => {
@@ -904,102 +1041,98 @@ const ActionMenuItem = ({ onClick, icon: Icon, label, color, theme }) => {
   />
 </div>
 
-              {/* Grid Produto e Categoria */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                {/* SEÇÃO DE PRODUTOS DINÂMICOS */}
-<div style={{ border: `1px solid ${theme.border}`, padding: '15px', borderRadius: '12px', backgroundColor: theme.bg }}>
+           {/* 1. SEÇÃO DE PRODUTOS DINÂMICOS (LARGURA TOTAL) */}
+<div style={{ 
+  border: `1px solid ${theme.border}`, 
+  padding: '15px', 
+  borderRadius: '12px', 
+  backgroundColor: theme.bg,
+  marginBottom: '15px' 
+}}>
   <label style={labelStyle}>Itens da Compra</label>
   
-  <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
-    <input 
-      style={{ ...selectStyle, flex: 3, backgroundColor: theme.mainBg }} 
-      placeholder="Nome do produto..."
-      value={tempProduto.nome}
-      onChange={(e) => setTempProduto({...tempProduto, nome: e.target.value})}
-    />
-    <input 
-      type="number"
-      style={{ ...selectStyle, flex: 1, backgroundColor: theme.mainBg }} 
-      placeholder="Qtd"
-      value={tempProduto.qtd}
-      onChange={(e) => setTempProduto({...tempProduto, qtd: e.target.value})}
-    />
+  <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', alignItems: 'flex-end' }}>
+    <div style={{ flex: 3 }}>
+      <input 
+        style={{ ...selectStyle, width: '100%', backgroundColor: theme.mainBg, color: theme.text }} 
+        placeholder="Produto"
+        value={tempProduto.nome}
+        onChange={(e) => setTempProduto({...tempProduto, nome: e.target.value})}
+      />
+    </div>
+    <div style={{ flex: 0.8 }}>
+      <input 
+        type="number"
+        style={{ ...selectStyle, width: '100%', backgroundColor: theme.mainBg, color: theme.text }} 
+        placeholder="Qtd"
+        value={tempProduto.qtd}
+        onChange={(e) => setTempProduto({...tempProduto, qtd: e.target.value})}
+      />
+    </div>
+    <div style={{ flex: 1.2 }}>
+      <input 
+        type="number"
+        style={{ ...selectStyle, width: '100%', backgroundColor: theme.mainBg, color: theme.text }} 
+        placeholder="Valor R$"
+        value={tempProduto.valor}
+        onChange={(e) => setTempProduto({...tempProduto, valor: e.target.value})}
+      />
+    </div>
     <button 
       onClick={() => {
         if(tempProduto.nome) {
           setListaProdutos([...listaProdutos, tempProduto]);
-          setTempProduto({ nome: "", qtd: 1 });
+          setTempProduto({ nome: "", qtd: 1, valor: "" });
         }
       }}
-      style={{ ...btnNew, padding: '8px' }}
+      style={{ ...btnNew, padding: '10px', height: '42px' }}
     >
       <Plus size={18} />
     </button>
   </div>
 
-  {/* Lista de produtos adicionados */}
-  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '150px', overflowY: 'auto' }}>
     {listaProdutos.map((p, idx) => (
       <div key={idx} style={{ 
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
         padding: '8px', backgroundColor: theme.mainBg, borderRadius: '8px', fontSize: '13px' 
       }}>
-        <span><strong>{p.qtd}x</strong> {p.nome}</span>
-        <Trash2 
-          size={14} 
-          color="#ef4444" 
-          cursor="pointer" 
-          onClick={() => setListaProdutos(listaProdutos.filter((_, i) => i !== idx))} 
-        />
+        <div style={{ display: 'flex', gap: '10px', color: theme.text }}>
+          <span style={{ fontWeight: '700' }}>{p.qtd}x</span>
+          <span>{p.nome}</span>
+          <span style={{ color: theme.textSecondary }}>- R$ {Number(p.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+        </div>
+        <Trash2 size={14} color="#ef4444" cursor="pointer" onClick={() => setListaProdutos(listaProdutos.filter((_, i) => i !== idx))} />
       </div>
     ))}
   </div>
 </div>
-                <div>
-                  <label style={labelStyle}>Categoria</label>
-<select 
-  style={{ ...selectStyle, width: '100%', backgroundColor: theme.bg, color: theme.text, borderColor: theme.border }} 
-  value={formData.categoria} 
-  onChange={e => setFormData({...formData, categoria: e.target.value})}
->
-  <option value="">Selecione...</option>
-  <option value="Administrativo">Administrativo</option>
-  <option value="Elétrica">Elétrica</option>
-  <option value="Equipamentos">Equipamentos</option>
-  <option value="Hidráulica">Hidráulica</option>
-  <option value="Jardinagem">Jardinagem</option>
-  <option value="Limpeza">Limpeza</option>
-  <option value="Manutenção">Manutenção</option>
-  <option value="Obras">Obras</option>
-  <option value="Piscina">Piscina</option>
-  <option value="Segurança">Segurança</option>
-  <option value="Outros">Outros</option>
-</select>
-                </div>
-              </div>
 
-              {/* Grid Valor e Aprovação */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div>
-                  <label style={labelStyle}>Valor Estimado</label>
-                  <input type="number" style={{ ...selectStyle, width: '100%', backgroundColor: theme.bg, color: theme.text, borderColor: theme.border }} value={formData.valor} onChange={e => setFormData({...formData, valor: e.target.value})} />
-                </div>
-                <div>
-                  <label style={labelStyle}>Aprovação?</label>
-                  <select style={{ ...selectStyle, width: '100%', backgroundColor: theme.bg, color: theme.text, borderColor: theme.border }} value={formData.requer_aprovacao} onChange={e => setFormData({...formData, requer_aprovacao: e.target.value})}>
-                    <option value="Sim">Sim</option>
-                    <option value="Não">Não</option>
-                  </select>
-                </div>
-              </div>
+{/* 2. CATEGORIA */}
+<div style={{ marginBottom: '15px' }}>
+  <label style={labelStyle}>Categoria</label>
+  <select 
+    style={{ ...selectStyle, width: '100%', backgroundColor: theme.bg, color: theme.text, borderColor: theme.border }} 
+    value={formData.categoria} 
+    onChange={e => setFormData({...formData, categoria: e.target.value})}
+  >
+    <option value="">Selecione...</option>
+    <option value="Administrativo">Administrativo</option>
+    <option value="Elétrica">Elétrica</option>
+    <option value="Equipamentos">Equipamentos</option>
+    <option value="Hidráulica">Hidráulica</option>
+    <option value="Jardinagem">Jardinagem</option>
+    <option value="Limpeza">Limpeza</option>
+    <option value="Manutenção">Manutenção</option>
+    <option value="Obras">Obras</option>
+    <option value="Piscina">Piscina</option>
+    <option value="Segurança">Segurança</option>
+    <option value="Outros">Outros</option>
+  </select>
+</div>
 
-              <div>
-                <label style={labelStyle}>Fornecedor</label>
-                <input style={{ ...selectStyle, width: '100%', backgroundColor: theme.bg, color: theme.text, borderColor: theme.border }} value={formData.fornecedor} onChange={e => setFormData({...formData, fornecedor: e.target.value})} />
-              </div>
-
-              {/* Grid de Datas */}
-<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+{/* 3. GRID: DATA SOLICITAÇÃO E APROVAÇÃO */}
+<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
   <div>
     <label style={labelStyle}>Data da Solicitação</label>
     <input 
@@ -1009,34 +1142,53 @@ const ActionMenuItem = ({ onClick, icon: Icon, label, color, theme }) => {
       onChange={e => setFormData({...formData, solicitado_data: e.target.value})} 
     />
   </div>
-
-  {/* CAMPO CONDICIONAL: Só aparece se o status for "Comprado" */}
-  {formData.status === "Comprado" && (
-    <div>
-      <label style={labelStyle}>Data da Compra</label>
-      <input 
-        type="date" 
-        style={{ ...selectStyle, width: '100%', backgroundColor: theme.bg, color: theme.text, borderColor: theme.border }} 
-        value={formData.comprado_data} 
-        onChange={e => setFormData({...formData, comprado_data: e.target.value})} 
-      />
-    </div>
-  )}
+  <div>
+    <label style={labelStyle}>Aprovação?</label>
+    <select 
+      style={{ ...selectStyle, width: '100%', backgroundColor: theme.bg, color: theme.text, borderColor: theme.border }} 
+      value={formData.requer_aprovacao} 
+      onChange={e => setFormData({...formData, requer_aprovacao: e.target.value})}
+    >
+      <option value="Sim">Sim</option>
+      <option value="Não">Não</option>
+    </select>
+  </div>
 </div>
 
-{/* Seletor de Status (Para você conseguir testar a aparição do campo acima) */}
-<div>
-  <label style={labelStyle}>Status</label>
-  <select 
+{/* 4. FORNECEDOR (DE VOLTA AQUI) */}
+<div style={{ marginBottom: '15px' }}>
+  <label style={labelStyle}>Fornecedor</label>
+  <input 
     style={{ ...selectStyle, width: '100%', backgroundColor: theme.bg, color: theme.text, borderColor: theme.border }} 
-    value={formData.status} 
-    onChange={e => setFormData({...formData, status: e.target.value})}
-  >
-    <option value="Pendente">Pendente</option>
-    <option value="Em Cotação">Em Cotação</option>
-    <option value="Comprado">Comprado</option>
-    <option value="Cancelado">Cancelado</option>
-  </select>
+    value={formData.fornecedor} 
+    onChange={e => setFormData({...formData, fornecedor: e.target.value})} 
+  />
+</div>
+
+{/* 5. GRID: VALOR ESTIMADO E STATUS */}
+<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
+  <div>
+    <label style={labelStyle}>Valor Estimado Total</label>
+    <input 
+      type="number" 
+      style={{ ...selectStyle, width: '100%', backgroundColor: theme.bg, color: theme.text, borderColor: theme.border }} 
+      value={formData.valor} 
+      onChange={e => setFormData({...formData, valor: e.target.value})} 
+    />
+  </div>
+  <div>
+    <label style={labelStyle}>Status</label>
+    <select 
+      style={{ ...selectStyle, width: '100%', backgroundColor: theme.bg, color: theme.text, borderColor: theme.border }} 
+      value={formData.status} 
+      onChange={e => setFormData({...formData, status: e.target.value})}
+    >
+      <option value="Pendente">Pendente</option>
+      <option value="Em Cotação">Em Cotação</option>
+      <option value="Comprado">Comprado</option>
+      <option value="Cancelado">Cancelado</option>
+    </select>
+  </div>
 </div>
 
               <div>
@@ -1062,72 +1214,111 @@ const ActionMenuItem = ({ onClick, icon: Icon, label, color, theme }) => {
   onChange={handleFileChange} 
 />
                 </div>
-                {/* Seção de Visualização de Anexos Atualizada */}
-                <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
-                  {arquivos.map((base64, idx) => {
-                    // Verifica se o conteúdo é um PDF pelo prefixo do Base64
-                    const isPDF = base64.startsWith("data:application/pdf");
-                    
-                    return (
-                      <div key={idx} style={{ position: 'relative' }}>
-                        {isPDF ? (
-                          // Visualização para PDF
-                          <div style={{ 
-                            width: '60px', height: '60px', borderRadius: '8px', 
-                            backgroundColor: '#fee2e2', display: 'flex', 
-                            alignItems: 'center', justifyContent: 'center', border: `1px solid ${theme.border}` 
-                          }}>
-                            <FileText size={24} color="#b91c1c" />
-                          </div>
-                        ) : (
-                          // Visualização para Imagens (JPEG, PNG, JPG)
-                          <img 
-                            src={base64} 
-                            style={{ width: '60px', height: '60px', borderRadius: '8px', objectFit: 'cover', border: `1px solid ${theme.border}` }} 
-                            alt="preview" 
-                          />
-                        )}
-                        
-                        {/* Botão para remover o arquivo da lista antes de salvar */}
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setArquivos(arquivos.filter((_, i) => i !== idx));
-                          }}
-                          style={{ 
-                            position: 'absolute', top: '-6px', right: '-6px', 
-                            background: '#ef4444', color: 'white', borderRadius: '50%', 
-                            border: '2px solid white', width: '20px', height: '20px', 
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer', fontSize: '12px', fontWeight: 'bold',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                          }}
-                        >
-                          <X size={12} />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
+                {/* Seção de Visualização de Anexos Atualizada no Modal */}
+<div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '10px' }}>
+  {arquivos.map((file, idx) => {
+    if (!file) return null;
+
+    // Se for existente, usa a URL. Se for novo, usa o data (Base64).
+    const isExisting = file.isExisting;
+    const fileUrl = isExisting ? file.url : file; 
+    
+    // Lógica para identificar se é PDF
+    const isPDF = typeof fileUrl === 'string' && 
+                  (fileUrl.toLowerCase().includes("application/pdf") || fileUrl.toLowerCase().includes(".pdf"));
+
+    // Lógica de Preview para Google Drive ou Base64
+    const getPreviewUrl = (url) => {
+      if (typeof url !== 'string') return '';
+      if (url.startsWith('data:')) return url;
+      const fileId = url.match(/[-\w]{25,}/);
+      return fileId ? `https://drive.google.com/thumbnail?id=${fileId[0]}&sz=w200` : url;
+    };
+
+    return (
+      <div key={idx} style={{ position: 'relative', width: '80px', height: '80px' }}>
+        {isPDF ? (
+          <div style={{ 
+            width: '100%', height: '100%', borderRadius: '8px', 
+            backgroundColor: '#fee2e2', display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', border: `1px solid ${theme.border}`
+          }}>
+            <FileText size={24} color="#b91c1c" />
+            <span style={{ fontSize: '10px', color: '#b91c1c', fontWeight: 'bold' }}>PDF</span>
+          </div>
+        ) : (
+          <img 
+            src={getPreviewUrl(fileUrl)} 
+            alt="Preview" 
+            style={{ 
+              width: '100%', height: '100%', borderRadius: '8px', 
+              objectFit: 'cover', border: `1px solid ${theme.border}` 
+            }} 
+          />
+        )}
+
+        {/* BOTÃO X PARA DELETAR */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            // Remove do estado local. 
+            // Nota: Para deletar do Drive permanentemente, você precisaria de uma action "delete_file" no AppScript.
+            setArquivos(prev => prev.filter((_, i) => i !== idx));
+          }}
+          style={{
+            position: 'absolute',
+            top: '-5px',
+            right: '-5px',
+            backgroundColor: '#ef4444',
+            color: 'white',
+            borderRadius: '50%',
+            border: '2px solid ' + theme.mainBg,
+            width: '20px',
+            height: '20px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10
+          }}
+        >
+          <X size={12} />
+        </button>
+      </div>
+    );
+  })}
+</div>
               </div>
 
               <button 
-                style={{ 
-                  backgroundColor: '#3b82f6', 
-                  color: 'white', 
-                  border: 'none', 
-                  padding: '14px', 
-                  borderRadius: '12px', 
-                  fontWeight: '700', 
-                  cursor: 'pointer', 
-                  marginTop: '10px',
-                  flexShrink: 0 
-                }} 
-                onClick={handleSave}
-                disabled={loading}
-              >
-                {loading ? <Loader2 className="animate-spin" size={18} /> : "Salvar Solicitação"}
-              </button>
+  style={{ 
+    backgroundColor: '#3b82f6', 
+    color: 'white', 
+    border: 'none', 
+    padding: '14px', 
+    borderRadius: '12px', 
+    fontWeight: '700', 
+    cursor: loading ? 'not-allowed' : 'pointer', 
+    marginTop: '10px',
+    flexShrink: 0,
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '10px'
+  }} 
+  onClick={handleSave}
+  disabled={loading} // Previne cliques duplos
+>
+  {loading ? (
+    <>
+      <Loader2 className="custom-loader" size={18} />
+      <span>Salvando...</span>
+    </>
+  ) : (
+    "Salvar Solicitação"
+  )}
+</button>
             </div>
           </div>
         </div>
@@ -1170,6 +1361,25 @@ const ActionMenuItem = ({ onClick, icon: Icon, label, color, theme }) => {
           <p><strong>Valor:</strong> R${selectedCompra.valor}</p>
         </div>
 
+        {/* Seção de Produtos dentro do Modal de Visualização */}
+<div style={{ ...viewBox, backgroundColor: theme.bg, borderColor: theme.border, padding: '12px', borderRadius: '8px' }}>
+  <strong style={{ fontSize: '13px', display: 'block', marginBottom: '8px' }}>Produtos da Solicitação:</strong>
+  {selectedCompra.itensRelacionados && selectedCompra.itensRelacionados.length > 0 ? (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      {selectedCompra.itensRelacionados.map((p, i) => (
+        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', borderBottom: `1px solid ${theme.border}`, paddingBottom: '4px' }}>
+          <span>{p.qtd}x {p.nome}</span>
+          <span style={{ fontWeight: '600' }}>
+            {Number(p.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+          </span>
+        </div>
+      ))}
+    </div>
+  ) : (
+    <span style={{ fontSize: '12px', color: theme.textSecondary }}>Nenhum item detalhado encontrado.</span>
+  )}
+</div>
+
         {/* Segundo Quadrado - Classificação */}
         <div style={{ ...viewBox, backgroundColor: theme.bg, borderColor: theme.border, padding: '12px', borderRadius: '8px' }}>
           <p><strong>Categoria:</strong> {selectedCompra.categoria}</p>
@@ -1177,14 +1387,18 @@ const ActionMenuItem = ({ onClick, icon: Icon, label, color, theme }) => {
         </div>
 
         {/* Datas */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <div style={{ ...viewBox, backgroundColor: theme.bg, borderColor: theme.border }}>
-                <strong>Solicitado em:</strong>  {selectedCompra.solicitado_data?.split(' ')[0]}
-            </div>
-            <div style={{ ...viewBox, backgroundColor: theme.bg, borderColor: theme.border }}>
-                <strong>Comprado em:</strong> {selectedCompra.comprado_data}
-            </div>
-        </div>
+        <div style={{ ...viewBox, backgroundColor: theme.bg, borderColor: theme.border }}>
+    <strong>Solicitado em:</strong>  {(() => {
+        const rawData = selectedCompra.solicitado_data;
+        if (!rawData) return '-';
+        // Se a data já estiver no formato brasileiro com hora, pegamos apenas a primeira parte
+        if (typeof rawData === 'string' && rawData.includes('/')) {
+            return rawData.split(' ')[0];
+        }
+        // Caso venha em formato ISO
+        return new Date(rawData).toLocaleDateString('pt-BR');
+    })()}
+</div>
 
         {/* Detalhes de Controle */}
         <div style={{ ...viewBox, backgroundColor: theme.bg, borderColor: theme.border }}>
@@ -1225,6 +1439,80 @@ const ActionMenuItem = ({ onClick, icon: Icon, label, color, theme }) => {
           </div>
         )}
       </div>
+
+  {/* Visualização de Anexos no Ver Mais - CORRIGIDO */}
+{selectedCompra.anexosRelacionados && selectedCompra.anexosRelacionados.length > 0 ? (
+  <div style={{ ...viewBox, backgroundColor: theme.bg, borderColor: theme.border, marginTop: '10px' }}>
+    <strong style={{ display: 'block', marginBottom: '8px' }}>Anexos:</strong>
+    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+      {selectedCompra.anexosRelacionados.map((anexo, idx) => {
+        if (!anexo) return null;
+        
+        // Extrai a URL correta, seja o anexo um objeto ou uma string
+        const fileUrl = typeof anexo === 'object' ? anexo.url : anexo;
+        
+        // GERANDO A URL DE MINIATURA
+        const previewUrl = getGoogleDrivePreview(anexo);
+        const isPDF = fileUrl && typeof fileUrl === 'string' && fileUrl.toLowerCase().includes('.pdf');
+
+        return (
+          <a key={idx} href={fileUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+            <div style={{
+              width: '65px',
+              height: '65px',
+              borderRadius: '8px',
+              border: `1px solid ${theme.border}`,
+              backgroundColor: theme.mainBg,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+              position: 'relative'
+            }}>
+              
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center',
+                color: theme.textSecondary,
+                zIndex: 1 
+              }}>
+                <FileText size={20} color={isPDF ? "#b91c1c" : theme.textSecondary} />
+                <span style={{ fontSize: '9px', marginTop: '2px', fontWeight: 'bold' }}>
+                  {isPDF ? "PDF" : "VER"}
+                </span>
+              </div>
+
+              {!isPDF && (
+                <img 
+                  src={previewUrl} 
+                  alt="Anexo"
+                  style={{ 
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%', 
+                    height: '100%', 
+                    objectFit: 'cover',
+                    zIndex: 2,
+                    backgroundColor: theme.mainBg
+                  }} 
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                  }}
+                />
+              )}
+            </div>
+          </a>
+        );
+      })}
+    </div>
+  </div>
+) : (
+  <div style={{ ...viewBox, backgroundColor: theme.bg, borderColor: theme.border, marginTop: '10px', opacity: 0.7 }}>
+    <span style={{ fontSize: '13px' }}>Nenhum anexo encontrado.</span>
+  </div>
+)}
 
       <button 
         onClick={() => setShowViewModal(false)} 

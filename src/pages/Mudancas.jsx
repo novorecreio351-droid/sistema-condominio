@@ -243,7 +243,8 @@ const [selectedColumns, setSelectedColumns] = useState([
   { id: 'cpf', label: 'CPF', selected: true },
   { id: 'rg', label: 'RG', selected: true },
   { id: 'contato', label: 'Telefone', selected: true },
-  { id: 'data_mudanca', label: 'Data', selected: true },
+  { id: 'data_mudanca', label: 'Inicio', selected: true },
+  { id: 'data_fim', label: 'Fim', selected: true },
   { id: 'periodo', label: 'Período', selected: true }, // Antes era "Taxa"
   { id: 'tipo', label: 'Tipo', selected: true },       // Antes era "Pago"
   { id: 'status', label: 'Status', selected: true }
@@ -333,7 +334,7 @@ const exportToPDF = () => {
     
     doc.setFontSize(18); 
     doc.setTextColor(30, 41, 59);
-    doc.text("Relatório de Reservas - Salão de Festas", 148, incluirLogo ? 45 : 25, { align: "center" });
+    doc.text("Relatório de Mudanças", 148, incluirLogo ? 45 : 25, { align: "center" });
 
     autoTable(doc, {
       startY: incluirLogo ? 55 : 35,
@@ -345,7 +346,7 @@ const exportToPDF = () => {
       margin: { left: 10, right: 10 }
     });
 
-    doc.save("Relatorio_Festas.pdf");
+    doc.save("Relatorio_Mudancas.pdf");
     setShowExportModal(false);
   };
 

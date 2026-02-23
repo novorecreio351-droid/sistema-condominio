@@ -715,7 +715,7 @@ else if (col.id === 'churrasqueira') {
   const ws = XLSX.utils.json_to_sheet(dadosParaExportar);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Reservas");
-  XLSX.writeFile(wb, "Relatorio_Festas.xlsx");
+  XLSX.writeFile(wb, "Relatorio_Churrasqueira.xlsx");
   
   setShowExportModal(false); // Fecha o modal após baixar
 };
@@ -783,7 +783,7 @@ const exportToPDF = () => {
       margin: { left: 10, right: 10 }
     });
 
-    doc.save("Relatorio_Festas.pdf");
+    doc.save("Relatorio_Churrasqueira.pdf");
     setShowExportModal(false);
   };
 
@@ -1734,7 +1734,7 @@ const itensExibidos = React.useMemo(() => {
   <div style={modalOverlay}>
       <div style={{ ...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth: '500px' }}>
         <div style={modalHeader}>
-          <h3 style={{ margin: 0 }}>{modalType === "add" ? "Nova Mudança" : "Editar Mudança"}</h3>
+          <h3 style={{ margin: 0 }}>{modalType === "add" ? "Nova Reserva" : "Editar Mudança"}</h3>
           <X size={20} cursor="pointer" onClick={() => setShowModal(false)} />
         </div>
   

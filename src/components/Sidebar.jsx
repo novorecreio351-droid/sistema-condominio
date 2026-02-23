@@ -156,9 +156,9 @@ export default function Sidebar({ active, setActive, user, onLogout }) {
         {renderItem("Unidades", Building2)}
         {renderItem("Moradores", Users)}
         {renderItem("Vagas", Car)}
-        {renderItem("Piscina", Waves)}
-        {renderItem("Manutenção", Wrench)}
-        {renderItem("Funcionários", UsersRound)}
+        {/*{renderItem("Piscina", Waves)}*/}
+        {/* {renderItem("Manutenção", Wrench)} */}
+        {/* {renderItem("Funcionários", UsersRound)} */}
       </>
     )}
   </ul>
@@ -171,7 +171,7 @@ export default function Sidebar({ active, setActive, user, onLogout }) {
         {renderItem("Festas", PartyPopper, "Salão de Festas")}
         {renderItem("Churrasqueira", Flame, "Churrasqueira")}
         {renderItem("Mudanças", Truck)}
-        {renderItem("Calendário", CalendarDays)}
+        {/* {renderItem("Calendário", CalendarDays)} */}
       </ul>
     </>
   )}
@@ -179,10 +179,10 @@ export default function Sidebar({ active, setActive, user, onLogout }) {
   <p style={categoryTitle}>Gestão Financeira</p>
   <ul style={listStyle}>
     {/* Esconde Inadimplentes e Multas do Conselheiro */}
-    {user?.cargo !== "Conselheiro" && renderItem("Inadimplentes", CircleDollarSign)}
+    {/* {user?.cargo !== "Conselheiro" && renderItem("Inadimplentes", CircleDollarSign)} */}
     {renderItem("Notas", FileText)}
-    {renderItem("Compras", ShoppingCart)}
-    {user?.cargo !== "Conselheiro" && renderItem("Multas", FileX)}
+    {/* {renderItem("Compras", ShoppingCart)} */}
+    {/* {user?.cargo !== "Conselheiro" && renderItem("Multas", FileX)} */}
   </ul>
 </nav>
 
