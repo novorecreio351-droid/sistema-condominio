@@ -1614,7 +1614,7 @@ const itensExibidos = React.useMemo(() => {
   <div style={modalOverlay}>
     <div style={{ ...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth: '500px' }}>
       <div style={modalHeader}>
-        <h3 style={{ margin: 0 }}>{modalType === "add" ? "Nova Mudança" : "Editar Mudança"}</h3>
+        <h3 style={{ margin: 0 }}>{modalType === "add" ? "Nova Reserva" : "Editar Mudança"}</h3>
         <X size={20} cursor="pointer" onClick={() => setShowModal(false)} />
       </div>
 
