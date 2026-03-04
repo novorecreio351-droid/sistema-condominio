@@ -48,44 +48,46 @@ export default function SelecaoUsuario({ onSelectUser }) {
   navigate("/dashboard"); // Isso força a URL a ficar correta logo após o clique
 };
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    if (!password || !selectedProfile || loading) return;
+  // SelecaoUsuario.jsx
+const handleLogin = async (e) => {
+  e.preventDefault();
+  if (!password || !selectedProfile || loading) return;
 
-    setLoading(true);
-    setError("");
+  setLoading(true);
+  setError("");
 
-    const params = new URLSearchParams({
-      token: TOKEN,
-      action: "login",
-      email: selectedProfile.email,
-      senha: password
-    });
+  const params = new URLSearchParams({
+    token: TOKEN,
+    action: "login",
+    email: selectedProfile.email,
+    senha: password
+  });
 
-    try {
-      const url = `${API_URL}?${params.toString()}`;
-      const response = await fetch(url, { method: "GET", mode: "cors", redirect: "follow" });
-      const result = await response.json();
+  try {
+    const url = `${API_URL}?${params.toString()}`;
+    const response = await fetch(url, { method: "GET", mode: "cors", redirect: "follow" });
+    const result = await response.json();
 
-      if (result.success) {
-        // --- AJUSTE CRUCIAL AQUI ---
-        // Combinamos os dados do perfil (nome, cargo) com os dados vindos do login
-        const usuarioCompleto = { ...selectedProfile, ...result.data };
-        
-        // Salvamos no LocalStorage para que outros componentes (como Unidades) saibam quem logou
-        localStorage.setItem("user", JSON.stringify(usuarioCompleto));
-        
-        // Avisa o App.js que o usuário logou
-        onSelectUser(usuarioCompleto);
-      } else {
-        setError(result.message || "Credenciais incorretas.");
-      }
-    } catch (err) {
-      setError("Erro de conexão com o servidor.");
-    } finally {
-      setLoading(false);
+    if (result.success) {
+      const usuarioCompleto = { ...selectedProfile, ...result.data };
+      
+      // Salva no sessionStorage para que a sessão expire ao fechar a aba
+      sessionStorage.setItem("usuarioLogado", JSON.stringify(usuarioCompleto));
+      
+      // Atualiza o estado no App.jsx
+      onSelectUser(usuarioCompleto);
+      
+      // REDIRECIONA PARA O DASHBOARD (Agora funciona pois está dentro do Router)
+      navigate("/dashboard"); 
+    } else {
+      setError(result.message || "Credenciais incorretas.");
     }
-  };
+  } catch (err) {
+    setError("Erro de conexão com o servidor.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   if (loadingInitial) {
     return (
