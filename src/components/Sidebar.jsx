@@ -156,7 +156,7 @@ export default function Sidebar({ active, setActive, user, onLogout }) {
         {renderItem("Unidades", Building2)}
         {renderItem("Moradores", Users)}
         {renderItem("Vagas", Car)}
-        {/*{renderItem("Piscina", Waves)}*/}
+        {renderItem("Piscina", Waves)}
         {/* {renderItem("Manutenção", Wrench)} */}
         {/* {renderItem("Funcionários", UsersRound)} */}
       </>

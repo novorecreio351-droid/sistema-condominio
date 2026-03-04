@@ -1,12 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { 
   ArrowLeft, CheckCircle, XCircle, Package, ShieldCheck, 
-  Eraser, Info, Calendar, User, MapPin, AlertCircle, Hash
-} from 'lucide-react';
+  Eraser, Info, User, MapPin, AlertCircle} from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
 
 export default function Aprovacao() {
   const sigCanvas = useRef(null);
+  // eslint-disable-next-line no-unused-vars
   const [idSolicitacao, setIdSolicitacao] = useState("C17007");
 
   // --- ESTILOS (CSS EM JAVASCRIPT) ---
