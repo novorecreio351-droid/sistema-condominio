@@ -522,7 +522,7 @@ const handleSave = async () => {
       f.status === "Ativo"
     );
 
-    if (ativosNaUnidade.length >= 5) {
+    if (ativosNaUnidade.length >= 7) {
       alert(
         `Não é possível cadastrar. A unidade ${formData.id_unidade} já atingiu o limite de 5 moradores com status 'Ativo'.\n\n` +
         `Para cadastrar um novo, altere o status de um morador antigo para 'Inativo'.`
