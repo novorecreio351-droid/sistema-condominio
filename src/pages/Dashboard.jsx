@@ -1,4 +1,5 @@
 /* eslint-disable no-unused-vars */
+import { useNavigate } from "react-router-dom"; // Certifique-se que esta linha existe
 import React, { useState, useEffect } from "react";
 import { useTheme } from "../App";
 import {
@@ -11,10 +12,12 @@ import {
   Clock
 } from "lucide-react";
 
+
 const TOKEN = import.meta.env.VITE_SHEETS_TOKEN; 
 const SHEETS_URL = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8epZMJIhCmapSOxyTegLMSEGZ2jBMGIxQ4cJb4a23oveAAaW/exec";
 
 export default function Dashboard({ user }) {
+  const navigate = useNavigate(); // Sem chaves!
   const [logs, setLogs] = useState([]);
   const [stats, setStats] = useState({ inadimplentes: 0, moradores: 0, reservas: 0 });
   const [upcoming, setUpcoming] = useState([]);
@@ -23,6 +26,24 @@ export default function Dashboard({ user }) {
 
   const normalizeText = (text) => 
     String(text || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+
+  const handleVerDetalhes = (item) => {
+  console.log("Item clicado:", item); // Adicione isso para testar
+  let rota = "";
+  const tipo = String(item.tipo).toLowerCase();
+
+  if (tipo.includes("festa")) rota = "/festas";
+  else if (tipo.includes("churrasqueira")) rota = "/churrasqueira";
+  else if (tipo.includes("mudança")) rota = "/mudancas";
+
+  console.log("Rota identificada:", rota); // Adicione isso
+  
+  if (rota) {
+    navigate(rota, { state: { openId: item.id } });
+  } else {
+    console.error("Nenhuma rota encontrada para o tipo:", item.tipo);
+  }
+};
 
   useEffect(() => {
     async function fetchData() {
@@ -111,7 +132,7 @@ export default function Dashboard({ user }) {
     {user?.cargo !== "Conselheiro" && (
       <div style={contentGrid}>
         <RecentActivities logs={logs} loading={loading} theme={theme} />
-        <UpcomingBookings data={upcoming} loading={loading} theme={theme} />
+        <UpcomingBookings data={upcoming} loading={loading} theme={theme} onViewDetails={handleVerDetalhes} />
       </div>
     )}
   </div>
@@ -138,6 +159,7 @@ const CardLoading = () => {
     </div>
   );
 };
+
 
 /* ================= COMPONENTES DE INTERFACE ================= */
 
@@ -247,7 +269,7 @@ function RecentActivities({ logs, loading, theme }) {
   );
 }
 
-function UpcomingBookings({ data, loading, theme }) {
+function UpcomingBookings({ data, loading, theme, onViewDetails }) {
   return (
     <div style={{ ...sectionCard, backgroundColor: theme.mainBg, borderColor: theme.border }}>
       <h3 style={{ ...sectionTitle, color: theme.text }}>Próximos Agendamentos</h3>
@@ -266,6 +288,7 @@ function UpcomingBookings({ data, loading, theme }) {
               title={item.tipo} 
               desc={`B5 - ${cleanUnit} - ${item.morador || "Pendente"}`} 
               date={item.data} 
+              onView={() => onViewDetails(item)}
             />
           );
         })
@@ -274,7 +297,7 @@ function UpcomingBookings({ data, loading, theme }) {
   );
 }
 
-function Booking({ title, desc, date, theme }) {
+function Booking({ title, desc, date, theme, onView }) {
   const getSafeDate = (d) => {
     if (!d) return { day: "--", month: "--" };
     let dateObj;
@@ -291,6 +314,7 @@ function Booking({ title, desc, date, theme }) {
     }
 
     return {
+      
         day: dateObj.getDate().toString().padStart(2, '0'),
         month: dateObj.toLocaleString("pt-BR", { month: "short" }).toUpperCase().replace('.', '')
     };
@@ -310,7 +334,8 @@ function Booking({ title, desc, date, theme }) {
           <p style={{ fontSize: "12px", color: theme.textSecondary, marginTop: "2px" }}>{desc}</p>
         </div>
       </div>
-      <button style={btnDetails}>Detalhes</button>
+      {/* CHAMA A FUNÇÃO AO CLICAR */}
+      <button style={btnDetails} onClick={onView}>Detalhes</button>
     </div>
   );
 }
