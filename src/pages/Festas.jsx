@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom"; // Se ainda não tiver
 import { 
   Calendar, Search, Plus, Edit2, Trash2, X, Loader2, 
   ChevronLeft, ChevronRight, MoreVertical, Eye, DollarSign,
@@ -52,6 +53,7 @@ export default function Festas({ user }) {
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [loadingGlobal, setLoadingGlobal] = useState(false);
   const [currentUser, setCurrentUser] = useState({ nome: "Sistema" });
+  const location = useLocation();
   
   const [showModal, setShowModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -208,7 +210,27 @@ const formatDateTimeForInput = (dateTimeStr) => {
     document.removeEventListener("mousedown", handleClickOutside);
   };
 }, []);
+useEffect(() => {
+  // 1. Verifica se existe um ID no estado da navegação
+  // 2. Verifica se a lista de festas (mudanças) já foi carregada pelo fetchData
+  if (location.state?.openId && festas.length > 0) {
+    
+    // Procura a mudança específica pelo ID
+    const itemEncontrado = festas.find(
+      (m) => String(m.id) === String(location.state.openId)
+    );
 
+    if (itemEncontrado) {
+      // Seta o item selecionado para o modal de visualização
+      setSelectedFesta(itemEncontrado);
+      // Abre o modal de "Ver Mais" (o Eye do Lucide)
+      setShowViewModal(true);
+      
+      // Limpa o estado para evitar que o modal reabra ao dar F5
+      window.history.replaceState({}, document.title);
+    }
+  }
+}, [location.state, festas]); // Executa quando a rota muda ou a lista carrega
   const fetchData = async () => {
   try {
     setLoadingInitial(true);
@@ -359,7 +381,8 @@ const formatDateTimeForInput = (dateTimeStr) => {
         "10. Guardar mesas e cadeiras no lugar determinado, ou seja, onde foram encontrados;",
         "11. Convidados não poderão circular pelo condomínio, somente ao redor do salão de festas;",
         "12. Carros de visitantes não podem entrar no condomínio;",
-        "13. Deixar a lista de convidados um dia antes na portaria para não haver transtornos."
+        "13. Deixar a lista de convidados um dia antes na portaria para não haver transtornos.",
+        "14. Zelar pelas mesas e cadeiras disponibilizadas para uso no salão de festas, devendo ser devolvidas em perfeito estado de conservação e no local de origem. Em caso de dano, quebra ou extravio de qualquer item, o responsável pela reserva deverá arcar integralmente com o custo de reparo ou reposição do material."
     ];
 
     regras.forEach(r => {
@@ -378,10 +401,21 @@ const formatDateTimeForInput = (dateTimeStr) => {
     doc.text(linesTermo, margin, currentY, { align: 'justify', maxWidth: contentWidth });
     currentY += (linesTermo.length * 6) + 12;
 
-    // RECEBIMENTO DAS CHAVES
-    escreverFluxoMisto([
-        { t: "Após vistoria, estou recebendo a chave do salão de festa em perfeito estado", b: false }
-    ], "center");
+    // RECEBIMENTO DAS CHAVES - PADRONIZADO (IGUAL AO ITEM 6)
+currentY += 5;
+checkPageBreak(30); // Verifica se cabe o bloco
+
+// 1. Definimos o texto completo em uma única variável
+const textoChaves = `Após vistoria, declaro estar recebendo a chave do salão de festas, bem como 10 (dez) mesas e 40 (quarenta) cadeiras, em perfeito estado de conservação e uso, comprometendo-me a devolvê-los nas mesmas condições ao término da utilização.`;
+
+// 2. O doc.splitTextToSize faz o trabalho de "quebrar" o texto para não sair da folha
+const linesChaves = doc.splitTextToSize(textoChaves, contentWidth);
+
+// 3. Imprime o texto justificado
+doc.text(linesChaves, margin, currentY, { align: 'justify', maxWidth: contentWidth });
+
+// 4. Atualiza o Y para o próximo elemento
+currentY += (linesChaves.length * 6) + 12;
 
     // 7. DATA
     currentY += 10;
@@ -519,7 +553,8 @@ const gerarContratoVazio = () => {
         "10. Guardar mesas e cadeiras no lugar determinado, ou seja, onde foram encontrados;",
         "11. Convidados não poderão circular pelo condomínio, somente ao redor do salão de festas;",
         "12. Carros de visitantes não podem entrar no condomínio;",
-        "13. Deixar a lista de convidados um dia antes na portaria para não haver transtornos."
+        "13. Deixar a lista de convidados um dia antes na portaria para não haver transtornos.",
+        "14. Zelar pelas mesas e cadeiras disponibilizadas para uso no salão de festas, devendo ser devolvidas em perfeito estado de conservação e no local de origem. Em caso de dano, quebra ou extravio de qualquer item, o responsável pela reserva deverá arcar integralmente com o custo de reparo ou reposição do material."
     ];
 
     regras.forEach(r => {
@@ -538,10 +573,21 @@ const gerarContratoVazio = () => {
     doc.text(linesTermo, margin, currentY, { align: 'justify', maxWidth: contentWidth });
     currentY += (linesTermo.length * 6) + 12;
 
-    // RECEBIMENTO DAS CHAVES
-    escreverFluxoMisto([
-        { t: "Após vistoria, estou recebendo a chave do salão de festa em perfeito estado", b: false }
-    ], "center");
+    // RECEBIMENTO DAS CHAVES - PADRONIZADO (IGUAL AO ITEM 6)
+currentY += 5;
+checkPageBreak(30); // Verifica se cabe o bloco
+
+// 1. Definimos o texto completo em uma única variável
+const textoChaves = `Após vistoria, declaro estar recebendo a chave do salão de festas, bem como 10 (dez) mesas e 40 (quarenta) cadeiras, em perfeito estado de conservação e uso, comprometendo-me a devolvê-los nas mesmas condições ao término da utilização.`;
+
+// 2. O doc.splitTextToSize faz o trabalho de "quebrar" o texto para não sair da folha
+const linesChaves = doc.splitTextToSize(textoChaves, contentWidth);
+
+// 3. Imprime o texto justificado
+doc.text(linesChaves, margin, currentY, { align: 'justify', maxWidth: contentWidth });
+
+// 4. Atualiza o Y para o próximo elemento
+currentY += (linesChaves.length * 6) + 12;
 
     // 7. DATA
     currentY += 10;

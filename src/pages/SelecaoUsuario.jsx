@@ -103,13 +103,24 @@ const handleLogin = async (e) => {
 
   return (
     <div style={containerStyle}>
-      <div style={contentStyle}>
-        <div style={{ textAlign: "center", marginBottom: "40px" }}>
-          <div style={logoIconStyle}>
-            <Building2 size={40} color="#3b82f6" />
-          </div>
+  <div style={contentStyle}>
+    <div style={{ textAlign: "center", marginBottom: "40px" }}>
+      
+      {/* 1. Substituímos o ícone Building2 e o texto pela tag img */}
+      <div style={{ marginBottom: "20px" }}>
+        <img 
+          src="/logo.png" 
+          alt="Logo Novo Recreio" 
+          style={{ 
+            maxWidth: "300px", // Ajuste o tamanho conforme necessário
+            height: "auto",
+            display: "block",
+            margin: "0 auto" 
+          }} 
+        />
+      </div>
           <h1 style={{ fontSize: "28px", fontWeight: "800", color: "#1e293b", margin: "10px 0" }}>
-            Novo Recreio
+     
           </h1>
           <p style={{ color: "#64748b", fontSize: "16px" }}>
             {selectedProfile ? "Digite sua senha" : "Selecione seu perfil"}

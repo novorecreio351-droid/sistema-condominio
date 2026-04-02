@@ -1,6 +1,7 @@
  
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { 
   Calendar, Search, Plus, Edit2, Trash2, X, Loader2, 
   ChevronLeft, ChevronRight, MoreVertical, Eye, DollarSign,
@@ -51,6 +52,7 @@ export default function Festas({ user }) {
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [loadingGlobal, setLoadingGlobal] = useState(false);
   const [currentUser, setCurrentUser] = useState({ nome: "Sistema" });
+  const location = useLocation();
   
   const [showModal, setShowModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -163,6 +165,7 @@ const formatDateTimeForInput = (dateTimeStr) => {
 };
 
   useEffect(() => {
+    
   fetchData();
   const handleResize = () => setIsMobile(window.innerWidth < 768);
   window.addEventListener('resize', handleResize);
@@ -183,23 +186,62 @@ const formatDateTimeForInput = (dateTimeStr) => {
     window.removeEventListener('resize', handleResize);
     document.removeEventListener("mousedown", handleClickOutside);
   };
+  
+// eslint-disable-next-line react-hooks/exhaustive-deps
 }, []); // Certifique-se de que não há nada sobrando aqui
 
+useEffect(() => {
+  // 1. Verifica se existe um ID no estado da navegação
+  // 2. Verifica se a lista de festas (mudanças) já foi carregada pelo fetchData
+  if (location.state?.openId && festas.length > 0) {
+    
+    // Procura a mudança específica pelo ID
+    const itemEncontrado = festas.find(
+      (m) => String(m.id) === String(location.state.openId)
+    );
+
+    if (itemEncontrado) {
+      // Seta o item selecionado para o modal de visualização
+      setSelectedFesta(itemEncontrado);
+      // Abre o modal de "Ver Mais" (o Eye do Lucide)
+      setShowViewModal(true);
+      
+      // Limpa o estado para evitar que o modal reabra ao dar F5
+      window.history.replaceState({}, document.title);
+    }
+  }
+}, [location.state, festas]); // Executa quando a rota muda ou a lista carrega
   const fetchData = async () => {
   try {
     setLoadingInitial(true);
     
-    // Adicionamos { method: "GET", redirect: "follow" } em cada chamada fetch
+    // 1. Busca inicial dos dados
     const [resMudancas, resUnidades, resMoradores] = await Promise.all([
       fetch(`${API_URL}?token=${TOKEN}&sheet=MUDANCAS`, { method: "GET", redirect: "follow" }).then(r => r.json()),
       fetch(`${API_URL}?token=${TOKEN}&sheet=UNIDADES`, { method: "GET", redirect: "follow" }).then(r => r.json()),
       fetch(`${API_URL}?token=${TOKEN}&sheet=MORADORES`, { method: "GET", redirect: "follow" }).then(r => r.json()),
     ]);
 
-    // IMPORTANTE: Salvar os dados da planilha MUDANCAS no estado festas
-    setFestas(Array.isArray(resMudancas) ? resMudancas : []);
+    let dadosTratados = Array.isArray(resMudancas) ? resMudancas : [];
+
+    // 2. Chama a verificação e recebe os IDs que foram enviados para "Realizado"
+    // O await aqui garante que o loading espere os POSTs terminarem
+    const idsParaMudar = await verificarEAtualizarStatus(dadosTratados);
+
+    // 3. ATUALIZAÇÃO LOCAL (O segredo contra o F5)
+    // Se a função encontrou itens de ontem, nós forçamos o status aqui na memória
+    if (idsParaMudar && idsParaMudar.length > 0) {
+      dadosTratados = dadosTratados.map(item => 
+        idsParaMudar.includes(item.id) 
+          ? { ...item, status: "Realizado" } 
+          : item
+      );
+    }
+
+    // 4. Alimenta o estado com os dados já corrigidos (CHAMAR APENAS UMA VEZ)
+    setFestas(dadosTratados);
     
-    // Ordenação das unidades para o dropdown
+    // 5. Ordenação das unidades para o dropdown
     const sortedUnidades = Array.isArray(resUnidades) ? [...resUnidades].sort((a, b) => {
       if (a.bloco !== b.bloco) return String(a.bloco).localeCompare(String(b.bloco), undefined, {numeric: true});
       return String(a.unidade).localeCompare(String(b.unidade), undefined, {numeric: true});
@@ -209,9 +251,9 @@ const formatDateTimeForInput = (dateTimeStr) => {
     setMoradores(Array.isArray(resMoradores) ? resMoradores : []);
 
   } catch (error) { 
-    console.error("Erro ao carregar dados (CORS/Redirect):", error); 
+    console.error("Erro ao carregar dados:", error); 
   } finally { 
-    // Delay de 300ms para suavizar a transição do loading para a tabela
+    // Delay de 300ms para suavizar a transição
     setTimeout(() => {
       setLoadingInitial(false);
     }, 300);
@@ -718,6 +760,38 @@ const itensExibidos = React.useMemo(() => {
   const start = (currentPage - 1) * itemsPerPage;
   return dadosFiltrados.slice(start, start + itemsPerPage);
 }, [dadosFiltrados, currentPage, itemsPerPage]);
+
+const verificarEAtualizarStatus = async (listaMudancas) => {
+  const agora = new Date();
+  const inicioDeHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 0, 0, 0);
+
+  const mudancasParaAtualizar = listaMudancas.filter(m => {
+    if (m.status !== "Agendado" || !m.data_mudanca) return false;
+    const partes = m.data_mudanca.split(' ');
+    const [day, month, year] = partes[0].split('/');
+    const dataMudanca = new Date(year, month - 1, day, 0, 0, 0);
+    return dataMudanca < inicioDeHoje; 
+  });
+
+  if (mudancasParaAtualizar.length === 0) return [];
+
+  const promises = mudancasParaAtualizar.map(mudanca => 
+    fetch(API_URL, {
+      method: "POST",
+      // Sem no-cors aqui para garantir o await real
+      body: JSON.stringify({
+        token: TOKEN,
+        action: "edit",
+        sheet: "MUDANCAS",
+        ...mudanca,
+        status: "Realizado"
+      }),
+    })
+  );
+
+  await Promise.all(promises);
+  return mudancasParaAtualizar.map(m => m.id);
+};
 
 
 
