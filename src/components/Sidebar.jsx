@@ -19,7 +19,8 @@ import {
   LogOut,
   Moon,
   UsersRound,
-  Sun
+  Sun,
+  Megaphone
 } from "lucide-react";
 import { useTheme } from "../App"; 
 
@@ -157,6 +158,7 @@ export default function Sidebar({ active, setActive, user, onLogout }) {
         {renderItem("Moradores", Users)}
         {renderItem("Vagas", Car)}
         {renderItem("Piscina", Waves)}
+        {renderItem("Comunicado", Megaphone)}
         {/* {renderItem("Manutenção", Wrench)} */}
         {/* {renderItem("Funcionários", UsersRound)} */}
       </>
