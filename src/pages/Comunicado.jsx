@@ -14,6 +14,8 @@ import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
 import { Highlight } from '@tiptap/extension-highlight';
 
+import { Extension } from '@tiptap/core';
+
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { useRef } from "react";
@@ -24,8 +26,43 @@ export default function Comunicado() {
   const [tom, setTom] = useState("Formal");
   const [isGerando, setIsGerando] = useState(false);
   const [titulo, setTitulo] = useState("");
+  const [, forceUpdate] = useState(0);
 
   const COR_TURQUESA = "#014731";
+
+  const FontSize = Extension.create({
+  name: 'fontSize',
+
+  addOptions() {
+    return {
+      types: ['textStyle'],
+    };
+  },
+
+  addGlobalAttributes() {
+    return [
+      {
+        types: this.options.types,
+        attributes: {
+          fontSize: {
+            default: null,
+            parseHTML: element => element.style.fontSize,
+            renderHTML: attributes => {
+              if (!attributes.fontSize) {
+                return {};
+              }
+
+              return {
+                style: `font-size: ${attributes.fontSize}`,
+              };
+            },
+          },
+        },
+      },
+    ];
+  },
+});
+
 
   // --- CONFIGURAÇÃO DO EDITOR TIPTAP ---
   const editor = useEditor({
@@ -35,6 +72,7 @@ export default function Comunicado() {
       TextStyle,
       Color,
       Highlight.configure({ multicolor: true }),
+      FontSize, // 🔥 ADICIONADO AQUI
     ],
     content: "", 
     editorProps: {
@@ -138,6 +176,11 @@ const a4Ref = useRef();
 
   if (!editor) return null;
 
+  const getFontSize = () => {
+  const attrs = editor.getAttributes('textStyle');
+  return attrs.fontSize ? parseInt(attrs.fontSize) : 16; // padrão 16px
+};
+
   const baixarPDF = async () => {
   const canvas = await html2canvas(a4Ref.current, {
     scale: 3, // 🔥 AQUI A QUALIDADE (2 = HD | 3 = Full HD | 4 = 4K)
@@ -155,9 +198,13 @@ const a4Ref = useRef();
 };
 
 const baixarImagem = async () => {
-  const canvas = await html2canvas(a4Ref.current, {
-    scale: 3, // 🔥 aumenta MUITO a qualidade
-    useCORS: true
+  const element = a4Ref.current;
+
+  const canvas = await html2canvas(element, {
+    scale: 3,
+    useCORS: true,
+    width: element.offsetWidth,   // 🔥 força largura atual
+    height: element.offsetHeight, // 🔥 força altura atual
   });
 
   const link = document.createElement("a");
@@ -193,6 +240,40 @@ const imprimir = () => {
   janela.focus();
   janela.print();
   janela.close();
+};
+
+const compartilharImagemWhatsApp = async () => {
+  const element = a4Ref.current;
+
+  const canvas = await html2canvas(element, {
+    scale: 3,
+    useCORS: true,
+    width: element.offsetWidth,
+    height: element.offsetHeight,
+  });
+
+  const image = canvas.toDataURL("image/png");
+
+  const blob = await (await fetch(image)).blob();
+  const file = new File([blob], "comunicado.png", { type: "image/png" });
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: "Comunicado",
+        text: "📢 Comunicado do condomínio",
+        files: [file],
+      });
+    // eslint-disable-next-line no-unused-vars
+    } catch (err) {
+      console.log("Share cancelado");
+    }
+  } else {
+    const link = document.createElement("a");
+    link.href = image;
+    link.download = "comunicado.png";
+    link.click();
+  }
 };
 
   return (
@@ -313,6 +394,66 @@ const imprimir = () => {
               <button onClick={() => editor.chain().focus().toggleBulletList().run()} style={btnToolbar}><List size={16}/></button>
               <button onClick={() => editor.chain().focus().toggleOrderedList().run()} style={btnToolbar}><ListOrdered size={16}/></button>
               <button onClick={() => editor.chain().focus().unsetAllMarks().run()} style={btnToolbar} title="Limpar"><Eraser size={16}/></button>
+              <select
+  onChange={(e) => {
+    editor.chain().focus().setMark('textStyle', { fontSize: e.target.value }).run();
+  }}
+  style={{
+    padding: '5px',
+    borderRadius: '6px',
+    border: '1px solid #e2e8f0',
+    fontSize: '12px'
+  }}
+>
+  <option value="">Tamanho</option>
+  <option value="12px">12</option>
+  <option value="14px">14</option>
+  <option value="16px">16</option>
+  <option value="18px">18</option>
+  <option value="20px">20</option>
+  <option value="24px">24</option>
+  <option value="28px">28</option>
+</select>
+{/* DIMINUIR */}
+  <button
+    onClick={() => {
+  const current = getFontSize();
+  const newSize = Math.max(10, current - 1);
+
+  editor.chain().focus().setMark('textStyle', {
+    fontSize: `${newSize}px`
+  }).run();
+
+  forceUpdate(v => v + 1);
+}}
+    style={btnToolbar}
+    title="Diminuir fonte"
+  >
+    ➖
+  </button>
+
+  {/* MOSTRAR TAMANHO */}
+  <span style={{ fontSize: '12px', minWidth: '30px', textAlign: 'center', color: '#333' }}>
+    {getFontSize()}px
+  </span>
+
+  {/* AUMENTAR */}
+  <button
+    onClick={() => {
+  const current = getFontSize();
+  const newSize = current + 1;
+
+  editor.chain().focus().setMark('textStyle', {
+    fontSize: `${newSize}px`
+  }).run();
+
+  forceUpdate(v => v + 1);
+}}
+    style={btnToolbar}
+    title="Aumentar fonte"
+  >
+    ➕
+  </button>
             </div>
             <div style={{ position: 'relative' }}>
   <button 
@@ -356,6 +497,12 @@ const imprimir = () => {
       🖨️ Imprimir
     </div>
 
+    <div 
+  onClick={() => { compartilharImagemWhatsApp(); setMenuAberto(false); }}
+  style={{...itemMenu, color: theme.text}}
+>
+  📲 Compartilhar no WhatsApp (Imagem)
+</div>
   </div>
 )}
 </div>
@@ -406,7 +553,7 @@ const imprimir = () => {
 }
 
 // Estilos
-const a4Paper = { width: '190mm', minHeight: '280mm', padding: '20mm', backgroundColor: '#fff', boxShadow: "0 0 20px rgba(0,0,0,0.1)", color: '#333', margin: '0 auto', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' };
+const a4Paper = { width: '170mm', minHeight: '270mm', padding: '20mm', backgroundColor: '#fff', boxShadow: "0 0 20px rgba(0,0,0,0.1)", color: '#333', margin: '0 auto', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' };
 const contentGrid = { display: "grid", gridTemplateColumns: "400px 1fr", gap: "25px", alignItems: "start" };
 const sectionCard = { padding: "24px", borderRadius: "20px", border: "1px solid", overflow: "hidden" };
 const labelStyle = { display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px', marginTop: '20px' };
