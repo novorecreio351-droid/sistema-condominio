@@ -12,6 +12,8 @@ import { useTheme } from "../App";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
+import { toJpeg } from "html-to-image";
+import * as htmlToImage from "html-to-image";
 
 const API_URL = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8epZMJIhCmapSOxyTegLMSEGZ2jBMGIxQ4cJb4a23oveAAaW/exec";
 const TOKEN = import.meta.env.VITE_SHEETS_TOKEN;
@@ -44,7 +46,9 @@ const fullScreenLoaderOverlay = { position: 'fixed', top: 0, left: 0, width: '10
 
 export default function Piscina({ user }) {
   const { theme } = useTheme();
-  
+
+  const [isDownloading, setIsDownloading] = useState(false); // Sugestão: estado para o loader do botão
+  const [loading, setLoading] = useState(false);
   const [festas, setFestas] = useState([]);
   const [unidades, setUnidades] = useState([]);
   const [moradores, setMoradores] = useState([]);
@@ -59,6 +63,150 @@ export default function Piscina({ user }) {
   const [modalType, setModalType] = useState("add");
   const [showMenuId, setShowMenuId] = useState(null);
   const menuRef = useRef(null);
+
+  const toBase64 = async (url) => {
+  const response = await fetch(url, { mode: 'cors' });
+  const blob = await response.blob();
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.readAsDataURL(blob);
+  });
+};
+
+const extrairIdDrive = (urlOuId) => {
+  if (!urlOuId) return '';
+  // Se já for um ID simples
+  if (!urlOuId.includes('http')) return urlOuId;
+  
+  // Se for URL de thumbnail ou visualização
+  const match = urlOuId.match(/id=([\w-]+)/) || urlOuId.match(/\/d\/([\w-]+)/);
+  return match ? match[1] : urlOuId;
+};
+  const getFotoBase64 = async (urlOuId) => {
+    if (!urlOuId) return null;
+    // Extrai apenas o ID do Drive caso seja uma URL
+    const fileId = urlOuId.includes('id=') ? urlOuId.split('id=')[1].split('&')[0] : urlOuId;
+
+    try {
+      // Chama o seu Apps Script (aquela função action === "getFoto" que você criou)
+      const response = await fetch(`${API_URL}?token=${TOKEN}&action=getFoto&fileId=${fileId}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        return `data:${result.contentType};base64,${result.base64}`;
+      }
+      return null;
+    } catch (error) {
+      console.error("Erro ao converter foto via servidor:", error);
+      return null;
+    }
+  };
+
+  // --- PARTE 2: ATUALIZE A SUA FUNÇÃO DE DOWNLOAD ---
+  const baixarCarteirinha = async () => {
+  if (!selectedFesta) return;
+
+  try {
+    // 1. Extrair o ID limpo
+    const rawId = selectedFesta.url_foto;
+    let fileId = rawId;
+    if (rawId.includes('id=')) {
+      fileId = rawId.split('id=')[1].split('&')[0];
+    } else if (rawId.includes('/d/')) {
+      fileId = rawId.split('/d/')[1].split('/')[0];
+    }
+
+    // 2. Buscar o Base64 real (Seu Proxy no Apps Script)
+    const resp = await fetch(`${API_URL}?token=${TOKEN}&action=getFoto&fileId=${fileId}`);
+    const result = await resp.json();
+
+    if (!result.success) throw new Error(result.message);
+
+    const fotoBase64 = `data:${result.contentType};base64,${result.base64}`;
+
+    // 3. SELEÇÃO DIRETA DOS NODES (Pular a re-renderização do React)
+    const node = document.getElementById('carteirinha-piscina');
+    // Procure a tag <img> dentro da carteirinha
+    const imgNode = node.querySelector('img'); 
+    
+    if (!imgNode) throw new Error("Tag img não encontrada dentro da carteirinha");
+
+    // Guardamos a URL original para voltar depois
+    const originalSrc = imgNode.src;
+
+    // FORÇAMOS o Base64 diretamente no elemento do DOM
+    imgNode.src = fotoBase64;
+
+    // 4. Aguardar o carregamento do Base64 (é quase instantâneo, mas 300ms garante)
+    await new Promise(resolve => {
+      imgNode.onload = resolve;
+      imgNode.onerror = resolve; // Continua mesmo se der erro
+      setTimeout(resolve, 500); 
+    });
+
+    // 5. CAPTURA (Com configurações para ignorar recursos externos)
+    const dataUrl = await htmlToImage.toPng(node, { 
+      pixelRatio: 2,
+      // Esta opção impede a lib de tentar "consertar" imagens externas
+      skipAutoScale: true,
+      // Forçamos a lib a NÃO tentar baixar nada da web
+      imagePlaceholder: fotoBase64 
+    });
+
+    // 6. DOWNLOAD
+    const link = document.createElement('a');
+    link.download = `Carteirinha_${selectedFesta.nome}.png`;
+    link.href = dataUrl;
+    link.click();
+
+    // 7. RESTAURAR O DOM
+    imgNode.src = originalSrc;
+
+  } catch (err) {
+    console.error("Erro Crítico:", err);
+    alert("Erro ao gerar imagem: " + err.message);
+  }
+};
+
+  const formatarNomeCarteirinha = (nome = "") => {
+  const nomeCompleto = nome.trim();
+  if (!nomeCompleto) return "-";
+
+  const preposicoes = ["da", "de", "do", "das", "dos"];
+
+  let partes = nomeCompleto.split(" ");
+
+  // Se couber, retorna tudo
+  if (nomeCompleto.length <= 22) return nomeCompleto;
+
+  // Sempre remove o último sobrenome primeiro
+  if (partes.length > 2) {
+    partes = partes.slice(0, -1);
+  }
+
+  // LIMPEZA FINAL INTELIGENTE
+  while (partes.length > 1) {
+    const ultimo = partes[partes.length - 1].toLowerCase();
+
+    // remove preposição
+    if (preposicoes.includes(ultimo)) {
+      partes.pop();
+      continue;
+    }
+
+    // remove palavras de 1 letra (tipo "d", "a", etc)
+    if (ultimo.length <= 1) {
+      partes.pop();
+      continue;
+    }
+
+    break;
+  }
+
+  return partes.join(" ");
+};
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [searchTerm, setSearchTerm] = useState("");
@@ -1771,80 +1919,139 @@ const handleSort = (key) => {
     width: '100%',
     maxWidth: '500px', 
     aspectRatio: '1011 / 639', 
-    backgroundImage: 'url("/template.jpg")', // Busca direto na public
+    backgroundImage: `url(${window.location.origin}/template.jpg)`, 
     backgroundSize: '100% 100%',
     backgroundRepeat: 'no-repeat',
     position: 'relative',
     borderRadius: '10px',
     overflow: 'hidden',
     boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
-    fontFamily: 'sans-serif',
-    color: '#000' 
+    fontFamily: '"Segoe UI", Roboto, sans-serif',
+    color: '#333' 
   }}>
 
-    {/* FOTO (Ajustada para o box da esquerda) */}
-    <div style={{ 
-      position: 'absolute', 
-      top: '20%', 
-      left: '7.5%', 
-      width: '28.5%', 
-      height: '58%', 
-      borderRadius: '25px',
-      overflow: 'hidden'
-    }}>
-      {selectedFesta.url_foto ? (
-        <img 
-          src={converterLinkDrive(selectedFesta.url_foto)} 
-          alt="Foto" 
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-        />
-      ) : (
-        <div style={{ background: '#eee', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <User size={40} color="#999" />
-        </div>
-      )}
-    </div>
+   {/* CONTAINER DA FOTO COM BORDA DUPLA AFASTADA */}
+<div style={{ 
+  position: 'absolute', 
+  top: '18.1%',      // Ajustado (-0.7%)
+  left: '6.4%',      // Ajustado (-0.7%)
+  width: '28.3%',    
+  height: '63.2%',   
+  borderRadius: '50%', 
+  zIndex: 1,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  
+  // PRIMEIRA BORDA (Colada na foto)
+  border: '0.5px solid #83ab9f',
+}}>
+  
+  {/* A SEGUNDA BORDA (Afastada) */}
+  {/* Usamos um div absoluto para criar o anel externo sem interferir na foto */}
+  <div style={{
+    position: 'absolute',
+    top: '-4px',    // Afastamento para cima
+    left: '-4px',   // Afastamento para esquerda
+    right: '-4px',  // Afastamento para direita
+    bottom: '-4px', // Afastamento para baixo
+    border: '0.4px solid #83ab9f',
+    borderRadius: '50%',
+    pointerEvents: 'none' // Garante que não atrapalhe cliques
+  }} />
 
-    {/* NOME (Formatado para Nome e Primeiro Sobrenome) */}
-<div style={{ position: 'absolute', top: '23%', left: '37.8%', fontSize: '0.8rem', fontWeight: '800' }}>
-  {selectedFesta.nome ? (
-    selectedFesta.nome.split(" ").slice(0, 2).join(" ")
-  ) : "-"}
+  {/* A FOTO EM SI */}
+  <div style={{ 
+    width: '100%', 
+    height: '100%', 
+    borderRadius: '50%', 
+    overflow: 'hidden' 
+  }}>
+    {selectedFesta.url_foto ? (
+      <img 
+        src={converterLinkDrive(selectedFesta.url_foto)} 
+        alt="Foto Morador" 
+        style={{ 
+          width: '100%', 
+          height: '100%', 
+          objectFit: 'cover',
+          objectPosition: 'center top'
+        }} 
+      />
+    ) : (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: '#f0f0f0' }}>
+        <User size={48} color="#ccc" />
+      </div>
+    )}
+  </div>
 </div>
 
-    {/* NASCIMENTO (Embaixo do título NASCIMENTO) */}
-    <div style={{ position: 'absolute', top: '40%', left: '37.8%', fontSize: '0.8rem', fontWeight: '600' }}>
-      {selectedFesta.nascimento ? formatarDataExibicao(selectedFesta.nascimento) : "-"}
-    </div>
+   <div style={{ 
+  position: 'absolute', 
+  top: '35%', 
+  left: '38%', 
+  textAlign: 'left',
+  width: '52%',
+  overflow: 'hidden'
+}}>
+  <div style={{ fontSize: '0.65rem', color: '#666', marginBottom: '2px', textTransform: 'uppercase' }}>
+    Nome
+  </div>
 
-    {/* UNIDADE (Formatado para sair apenas 5-206) */}
-<div style={{ position: 'absolute', top: '55%', left: '37.8%', fontSize: '0.8rem', fontWeight: '600' }}>
-  {selectedFesta.id_unidade ? (
-    getUnitLabel(selectedFesta.id_unidade)
-      .replace(/BLOCO\s*|UNIDADE\s*/gi, '') // Remove as palavras BLOCO e UNIDADE
-      .replace(/\s*-\s*/g, '-')             // Remove espaços em volta do traço
-      .trim()                                // Limpa espaços nas pontas
-  ) : "-"}
+  <div style={{ 
+    fontSize: (selectedFesta.nome || "").length > 16 ? '0.85rem' : '1rem', 
+    fontWeight: '700', 
+    color: '#1a1a1a', 
+    textTransform: 'uppercase', 
+    lineHeight: '1.1',
+    whiteSpace: 'nowrap',
+    letterSpacing: (selectedFesta.nome || "").length > 16 ? '-0.03em' : '-0.01em',
+  }}>
+    {formatarNomeCarteirinha(selectedFesta.nome)}
+  </div>
 </div>
 
-    {/* TELEFONE (Embaixo do título TELEFONE) */}
-    <div style={{ position: 'absolute', top: '70.5%', left: '37.8%', fontSize: '0.8rem', fontWeight: '600' }}>
-      {selectedFesta.telefone || "-"}
+    {/* BLOCO DE UNIDADE */}
+    <div style={{ position: 'absolute', top: '53%', left: '38%', textAlign: 'left' }}>
+      <div style={{ fontSize: '0.65rem', color: '#666', marginBottom: '2px', textTransform: 'uppercase' }}>Unidade</div>
+      <div style={{ fontSize: '1rem', fontWeight: '700', color: '#1a1a1a' }}>
+        {selectedFesta.id_unidade ? (
+          getUnitLabel(selectedFesta.id_unidade)
+            .replace(/BLOCO\s*|UNIDADE\s*/gi, '')
+            .replace(/\s*-\s*/g, '-')
+            .trim()
+        ) : "-"}
+      </div>
     </div>
 
-    {/* VALIDADE (Embaixo do título VALIDADE) */}
-    <div style={{ position: 'absolute', top: '55.5%', left: '68.2%', fontSize: '0.8rem', fontWeight: 'bold', color: '#cc0000' }}>
-      {selectedFesta.validade ? formatarDataExibicao(selectedFesta.validade) : "-"}
-    </div>
-
-    {/* ID (Na frente do ID) */}
-    <div style={{ position: 'absolute', bottom: '-0.2%', right: '3%', fontSize: '0.7rem', fontWeight: '600', color: '#095f34' }}>
-      {selectedFesta.id || "000"}
+    {/* BLOCO DE VALIDADE */}
+    <div style={{ position: 'absolute', top: '53%', left: '68%', textAlign: 'left' }}>
+      <div style={{ fontSize: '0.65rem', color: '#666', marginBottom: '2px', textTransform: 'uppercase' }}>Validade</div>
+      <div style={{ fontSize: '1rem', fontWeight: '700', color: '#1a1a1a' }}>
+        {selectedFesta.validade ? formatarDataExibicao(selectedFesta.validade) : "-"}
+      </div>
     </div>
 
   </div>
 </div>
-
+<button
+  onClick={baixarCarteirinha}
+  style={{
+    marginTop: "10px",
+    padding: "10px 14px",
+    borderRadius: "8px",
+    border: "none",
+    background: "#3b82f6",
+    color: "#fff",
+    fontWeight: "700",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    gap: "6px"
+  }}
+>
+  Baixar Carteirinha
+</button>
       </div>
     </div>
   </div>

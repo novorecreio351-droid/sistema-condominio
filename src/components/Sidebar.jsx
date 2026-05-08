@@ -20,7 +20,8 @@ import {
   Moon,
   UsersRound,
   Sun,
-  Megaphone
+  Megaphone,
+  Barcode
 } from "lucide-react";
 import { useTheme } from "../App"; 
 
@@ -159,6 +160,7 @@ export default function Sidebar({ active, setActive, user, onLogout }) {
         {renderItem("Vagas", Car)}
         {renderItem("Piscina", Waves)}
         {renderItem("Comunicado", Megaphone)}
+        {renderItem("Patrimonio", Barcode, "Patrimônio")}
         {/* {renderItem("Manutenção", Wrench)} */}
         {/* {renderItem("Funcionários", UsersRound)} */}
       </>

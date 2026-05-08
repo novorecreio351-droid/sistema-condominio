@@ -182,98 +182,166 @@ const a4Ref = useRef();
 };
 
   const baixarPDF = async () => {
-  const canvas = await html2canvas(a4Ref.current, {
-    scale: 3, // 🔥 AQUI A QUALIDADE (2 = HD | 3 = Full HD | 4 = 4K)
-    useCORS: true
+  const element = a4Ref.current;
+  const clone = element.cloneNode(true);
+  Object.assign(clone.style, {
+    position: "absolute", left: "-9999px", top: "0",
+    width: "794px", height: "auto", minHeight: "1123px",
+    padding: "20mm", backgroundColor: "#fff", display: "flex", flexDirection: "column"
   });
+  document.body.appendChild(clone);
 
+  const canvas = await html2canvas(clone, { scale: 2, useCORS: true, width: 794, windowWidth: 794 });
   const imgData = canvas.toDataURL("image/png");
-
   const pdf = new jsPDF("p", "mm", "a4");
-  const pdfWidth = 210;
-  const pdfHeight = 297;
-
-  pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+  pdf.addImage(imgData, "PNG", 0, 0, 210, 297);
   pdf.save("comunicado.pdf");
+  document.body.removeChild(clone);
 };
 
 const baixarImagem = async () => {
   const element = a4Ref.current;
-
-  const canvas = await html2canvas(element, {
-    scale: 3,
-    useCORS: true,
-    width: element.offsetWidth,   // 🔥 força largura atual
-    height: element.offsetHeight, // 🔥 força altura atual
+  
+  // 1. Criar um clone do elemento A4
+  const clone = element.cloneNode(true);
+  
+  // 2. Estilizar o clone para garantir que ele seja um A4 perfeito
+  // Independentemente de onde ele esteja sendo renderizado
+  Object.assign(clone.style, {
+    position: "absolute",
+    left: "-9999px",
+    top: "0",
+    width: "794px",      // Largura exata de um A4 em 96dpi
+    height: "auto",      // Deixa crescer conforme o texto
+    minHeight: "1123px",
+    margin: "0",
+    padding: "20mm",
+    display: "flex",
+    flexDirection: "column",
+    backgroundColor: "#fff",
   });
 
-  const link = document.createElement("a");
-  link.download = "comunicado.jpeg";
-  link.href = canvas.toDataURL("image/jpeg", 1.0);
-  link.click();
+  // 3. Opcional: Se você usa fontes específicas ou estilos globais, 
+  // certifique-se de que o clone os herde anexando-o ao body
+  document.body.appendChild(clone);
+
+  try {
+    const canvas = await html2canvas(clone, {
+      scale: 3,
+      useCORS: true,
+      logging: false,
+      width: 794,
+      height: clone.offsetHeight,
+      windowWidth: 794, // Força o layout de desktop dentro do canvas
+    });
+
+    const link = document.createElement("a");
+    link.download = "comunicado.jpeg";
+    link.href = canvas.toDataURL("image/jpeg", 1.0);
+    link.click();
+  } catch (err) {
+    console.error("Erro ao gerar imagem:", err);
+  } finally {
+    // 4. Remover o clone do DOM
+    document.body.removeChild(clone);
+  }
 };
 
 const imprimir = () => {
   const conteudo = a4Ref.current.innerHTML;
+  const tituloDocumento = titulo || "Comunicado";
 
-  const janela = window.open('', '', 'height=800,width=600');
+  const janela = window.open('', '', 'height=800,width=800');
 
   janela.document.write(`
     <html>
       <head>
-        <title>Imprimir Comunicado</title>
+        <title>${tituloDocumento}</title>
         <style>
-          body {
-            margin: 0;
-            padding: 20px;
-            font-family: Arial, sans-serif;
+          @page { size: A4; margin: 0; }
+          body { margin: 0; padding: 0; background-color: white; font-family: Arial, sans-serif; }
+          
+          .print-container {
+            width: 210mm;
+            height: 297mm;
+            padding: 20mm;
+            margin: 0 auto;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background-color: white;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
+
+          /* Alinhamento da Assinatura */
+          div[style*="margin-top: auto"] { 
+            margin-top: auto !important; 
+          }
+
+          /* Linha do Cabeçalho - Ajustada para o modelo original */
+          div[style*="height: 2px"][style*="opacity: 0.2"] {
+            height: 2px !important;
+            background-color: ${COR_TURQUESA} !important;
+            opacity: 0.2 !important;
+            display: block !important;
+          }
+
+          /* Linha da Assinatura - Ajustada para o modelo original */
+          div[style*="width: 200px"][style*="height: 1px"] {
+            width: 200px !important;
+            height: 1px !important;
+            background-color: ${COR_TURQUESA} !important;
+            opacity: 0.3 !important;
+            margin: 40px auto 10px auto !important;
+            display: block !important;
+          }
+
+          h2 { color: ${COR_TURQUESA} !important; text-align: center; margin-bottom: 10px; }
+          strong { color: ${COR_TURQUESA} !important; }
+          img { width: 90px; height: 90px; display: block; margin: 0 auto; }
+          
+          /* Garante que o texto do corpo respeite as quebras */
+          .ProseMirror { white-space: pre-wrap; word-bundle: break-word; }
         </style>
       </head>
       <body>
-        ${conteudo}
+        <div class="print-container">
+          ${conteudo}
+        </div>
+        <script>
+          window.onload = () => {
+            window.print();
+            setTimeout(() => { window.close(); }, 500);
+          };
+        </script>
       </body>
     </html>
   `);
 
   janela.document.close();
-  janela.focus();
-  janela.print();
-  janela.close();
 };
 
 const compartilharImagemWhatsApp = async () => {
   const element = a4Ref.current;
-
-  const canvas = await html2canvas(element, {
-    scale: 3,
-    useCORS: true,
-    width: element.offsetWidth,
-    height: element.offsetHeight,
+  const clone = element.cloneNode(true);
+  Object.assign(clone.style, {
+    position: "absolute", left: "-9999px", top: "0",
+    width: "794px", height: "auto", padding: "20mm", backgroundColor: "#fff"
   });
+  document.body.appendChild(clone);
 
+  const canvas = await html2canvas(clone, { scale: 2, useCORS: true, width: 794, windowWidth: 794 });
   const image = canvas.toDataURL("image/png");
-
   const blob = await (await fetch(image)).blob();
   const file = new File([blob], "comunicado.png", { type: "image/png" });
 
   if (navigator.share) {
-    try {
-      await navigator.share({
-        title: "Comunicado",
-        text: "📢 Comunicado do condomínio",
-        files: [file],
-      });
     // eslint-disable-next-line no-unused-vars
-    } catch (err) {
-      console.log("Share cancelado");
-    }
-  } else {
-    const link = document.createElement("a");
-    link.href = image;
-    link.download = "comunicado.png";
-    link.click();
+    try { await navigator.share({ files: [file] }); } catch (err) { console.log("Cancelado"); }
   }
+  document.body.removeChild(clone);
 };
 
   return (
@@ -553,9 +621,34 @@ const compartilharImagemWhatsApp = async () => {
 }
 
 // Estilos
-const a4Paper = { width: '170mm', minHeight: '270mm', padding: '20mm', backgroundColor: '#fff', boxShadow: "0 0 20px rgba(0,0,0,0.1)", color: '#333', margin: '0 auto', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' };
-const contentGrid = { display: "grid", gridTemplateColumns: "400px 1fr", gap: "25px", alignItems: "start" };
-const sectionCard = { padding: "24px", borderRadius: "20px", border: "1px solid", overflow: "hidden" };
+const a4Paper = { 
+  width: '794px', // Largura fixa de um A4 (96 DPI)
+  minHeight: '1123px', 
+  padding: '20mm', 
+  backgroundColor: '#fff', 
+  boxShadow: "0 0 20px rgba(0,0,0,0.1)", 
+  color: '#333', 
+  margin: '0 auto', 
+  boxSizing: 'border-box', 
+  display: 'flex', 
+  flexDirection: 'column',
+  // Se estiver no mobile, podemos dar um "zoom out" visual
+  transform: window.innerWidth < 800 ? `scale(${window.innerWidth / 850})` : 'none',
+  transformOrigin: 'top center'
+};
+const contentGrid = { 
+  display: "grid", 
+  gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", // Ajusta automático
+  gap: "25px", 
+  alignItems: "start" 
+};
+const sectionCard = { 
+  padding: "24px", 
+  borderRadius: "20px", 
+  border: "1px solid", 
+  overflow: "hidden",
+  maxWidth: "100%" // Garante que não ultrapasse a tela
+};
 const labelStyle = { display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px', marginTop: '20px' };
 const textAreaStyle = { width: '100%', minHeight: '120px', borderRadius: '12px', padding: '12px', fontSize: '14px', border: '1px solid', resize: 'none', outline: 'none' };
 const selectStyle = { width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid', outline: 'none' };
@@ -563,12 +656,27 @@ const btnGerar = { width: '100%', marginTop: '25px', padding: '14px', borderRadi
 const btnAjudar = { color: 'white', border: 'none', padding: '10px 18px', borderRadius: '10px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' };
 const dicaCard = { padding: '15px', borderRadius: '15px', border: '1px solid', display: 'flex', gap: '12px', alignItems: 'center' };
 const previewHeader = { padding: '15px 24px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' };
-const previewContent = { padding: '20px', display: 'flex', justifyContent: 'center', overflowY: 'auto', maxHeight: '800px', backgroundColor: '#e2e8f0' };
+const previewContent = { 
+  padding: '20px', 
+  display: 'flex', 
+  justifyContent: 'center', 
+  overflowX: 'auto', // Permite ver o papel todo deslizando pro lado no celular
+  backgroundColor: '#e2e8f0',
+  borderRadius: '0 0 20px 20px'
+};
 const logoWrapper = { marginBottom: '10px', display: 'flex', justifyContent: 'center' };
 const tituloComunicado = { fontSize: '20px', textAlign: 'center', fontWeight: '800', marginBottom: '10px' };
 const metaData = { fontSize: '13px', color: '#64748b', textAlign: 'center', marginBottom: '40px' };
-const textoCorpo = { fontSize: '16px', lineHeight: '1.8', color: '#1e293b', flex: 1, display: 'flex', flexDirection: 'column','& strong': {
-    color: '#014731'} };
+const textoCorpo = { 
+  fontSize: '16px', 
+  lineHeight: '1.8', 
+  color: '#1e293b', 
+  flex: 1, 
+  display: 'flex', 
+  flexDirection: 'column',
+  wordBreak: 'break-word', // Garante que palavras muito longas não quebrem o layout
+  overflowWrap: 'anywhere' 
+};
 const assinaturaContainer = { textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 'auto' };
 const divisor = { width: '1px', height: '20px', background: '#e2e8f0', margin: '0 5px' };
 const btnToolbar = {
