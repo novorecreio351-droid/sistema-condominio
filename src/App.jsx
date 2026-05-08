@@ -17,6 +17,7 @@ import Compras from "./pages/Compras";
 import Aprovacao from "./pages/Aprovacao";
 import Piscina from "./pages/Piscina";
 import Comunicado from "./pages/Comunicado";
+import Patrimonio from "./pages/Patrimonio";
 
 // ================= CONTEXTO DE TEMA =================
 const ThemeContext = createContext();
@@ -167,6 +168,7 @@ const atualizarAtividade = () => {
                     <Route path="/aprovacao" element={<Aprovacao user={usuarioLogado} />} />
                     <Route path="/piscina" element={<Piscina user={usuarioLogado} />} />
                     <Route path="/comunicado" element={<Comunicado user={usuarioLogado} />} />
+                    <Route path="/patrimonio" element={<Patrimonio user={usuarioLogado} />} />
                   </>
                 )}
 
