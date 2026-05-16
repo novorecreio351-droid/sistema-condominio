@@ -18,6 +18,7 @@ import Aprovacao from "./pages/Aprovacao";
 import Piscina from "./pages/Piscina";
 import Comunicado from "./pages/Comunicado";
 import Patrimonio from "./pages/Patrimonio";
+import Encomendas from "./pages/Encomendas";
 
 // ================= CONTEXTO DE TEMA =================
 const ThemeContext = createContext();
@@ -48,6 +49,8 @@ const [usuarioLogado, setUsuarioLogado] = useState(() => {
   // ================= TEMA DINÂMICO =================
   const theme = {
     bg: isDark ? "#0f172a" : "#f8fafc",
+    bgBody: isDark ? "#0f172a" : "#f8fafc",
+    bgCard: isDark ? "#1e293b" : "#ffffff",
     mainBg: isDark ? "#1e293b" : "#ffffff",
     text: isDark ? "#f8fafc" : "#1e293b",
     textSecondary: isDark ? "#94a3b8" : "#64748b",
@@ -169,6 +172,7 @@ const atualizarAtividade = () => {
                     <Route path="/piscina" element={<Piscina user={usuarioLogado} />} />
                     <Route path="/comunicado" element={<Comunicado user={usuarioLogado} />} />
                     <Route path="/patrimonio" element={<Patrimonio user={usuarioLogado} />} />
+                    <Route path="/encomendas" element={<Encomendas user={usuarioLogado} />} />
                   </>
                 )}
 

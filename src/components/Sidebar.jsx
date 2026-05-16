@@ -24,6 +24,13 @@ import {
   Barcode
 } from "lucide-react";
 import { useTheme } from "../App"; 
+const ROLES = {
+  PORTEIRO: "Porteiro",
+  SINDICO: "Sindico",
+  AUX: "Auxiliar Administrativo",
+  DEV: "Desenvolvedor",
+  CONSELHEIRO: "Conselheiro",
+};
 
 export default function Sidebar({ active, setActive, user, onLogout }) {
   const navigate = useNavigate(); // <-- Adicione esta linha
@@ -32,6 +39,35 @@ export default function Sidebar({ active, setActive, user, onLogout }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const menuRef = useRef(null);
   const { theme, toggleTheme } = useTheme();
+
+  // Dentro da função Sidebar, antes do return:
+const hasAnyPermission = (items) => {
+  return items.some(item => canAccess(item));
+};
+
+  const PERMISSIONS = {
+  Dashboard: [ROLES.PORTEIRO, ROLES.SINDICO, ROLES.AUX, ROLES.DEV, ROLES.CONSELHEIRO],
+
+  Unidades: [ROLES.SINDICO, ROLES.AUX, ROLES.DEV],
+  Moradores: [ROLES.SINDICO, ROLES.AUX, ROLES.DEV],
+  Vagas: [ROLES.SINDICO, ROLES.AUX, ROLES.DEV],
+  Piscina: [ROLES.SINDICO, ROLES.AUX, ROLES.DEV],
+  Comunicado: [ROLES.SINDICO, ROLES.AUX, ROLES.DEV],
+
+  Encomendas: [ROLES.PORTEIRO, ROLES.SINDICO, ROLES.AUX, ROLES.DEV],
+
+  Festas: [ROLES.SINDICO, ROLES.AUX, ROLES.DEV],
+  Churrasqueira: [ROLES.SINDICO, ROLES.AUX, ROLES.DEV],
+  Mudanças: [ROLES.SINDICO, ROLES.AUX, ROLES.DEV],
+
+  Notas: [ROLES.SINDICO, ROLES.AUX, ROLES.DEV],
+};
+
+const canAccess = (label) => {
+  const allowed = PERMISSIONS[label];
+  if (!allowed) return false;
+  return allowed.includes(user?.cargo);
+};
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
@@ -62,40 +98,47 @@ export default function Sidebar({ active, setActive, user, onLogout }) {
   }, [location, setActive]);
 
   const renderItem = (label, Icon, displayName = null) => {
-    const isActive = active === label;
-    const activeBg = theme.isDark ? "#0369a133" : "#e0f2fe";
-    const activeText = theme.isDark ? "#38bdf8" : "#0369a1";
-    const hoverBg = theme.isDark ? "#334155" : "#f1f5f9";
+  if (!canAccess(label)) return null;
 
-    return (
-      <li
-        key={label}
-        onClick={() => { 
-          // 1. Atualiza o estado visual
-          setActive(label); 
-          setMobileOpen(false);
-          
-          // 2. Cria a rota limpa (ex: "Mudanças" vira "mudancas")
-          const rota = label.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-          
-          // 3. Navega para a URL
-          navigate(`/${rota}`); 
-        }} 
-        style={{
-          ...itemStyle,
-          backgroundColor: isActive ? activeBg : "transparent",
-          color: isActive ? activeText : theme.textSecondary,
-        }}
-        onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = hoverBg; }}
-        onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = "transparent"; }}
-      >
-        <span style={iconSpace}>
-          <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
-        </span>
-        {displayName || label}
-      </li>
-    );
-  };
+  const isActive = active === label;
+
+  const activeBg = theme.isDark ? "#0369a133" : "#e0f2fe";
+  const activeText = theme.isDark ? "#38bdf8" : "#0369a1";
+  const hoverBg = theme.isDark ? "#334155" : "#f1f5f9";
+
+  return (
+    <li
+      key={label}
+      onClick={() => {
+        setActive(label);
+        setMobileOpen(false);
+
+        const rota = label
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "");
+
+        navigate(`/${rota}`);
+      }}
+      style={{
+        ...itemStyle,
+        backgroundColor: isActive ? activeBg : "transparent",
+        color: isActive ? activeText : theme.textSecondary,
+      }}
+      onMouseEnter={(e) => {
+        if (!isActive) e.currentTarget.style.backgroundColor = hoverBg;
+      }}
+      onMouseLeave={(e) => {
+        if (!isActive) e.currentTarget.style.backgroundColor = "transparent";
+      }}
+    >
+      <span style={iconSpace}>
+        <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+      </span>
+      {displayName || label}
+    </li>
+  );
+};
 
   const inicial = user?.nome ? user.nome.charAt(0).toUpperCase() : "U";
 
@@ -149,45 +192,43 @@ export default function Sidebar({ active, setActive, user, onLogout }) {
 
         {/* NAVEGAÇÃO */}
 <nav style={navStyle}>
-  <p style={categoryTitle}>Principal</p>
-  <ul style={listStyle}>
-    {renderItem("Dashboard", LayoutDashboard)}
-    {/* Somente mostra Unidades se NÃO for Conselheiro */}
-    {user?.cargo !== "Conselheiro" && (
-      <>
+  {/* CATEGORIA PRINCIPAL */}
+  {hasAnyPermission(["Dashboard", "Unidades", "Moradores", "Vagas", "Piscina", "Comunicado", "Encomendas"]) && (
+    <>
+      <p style={categoryTitle}>Principal</p>
+      <ul style={listStyle}>
+        {renderItem("Dashboard", LayoutDashboard)}
         {renderItem("Unidades", Building2)}
         {renderItem("Moradores", Users)}
         {renderItem("Vagas", Car)}
         {renderItem("Piscina", Waves)}
         {renderItem("Comunicado", Megaphone)}
-        {renderItem("Patrimonio", Barcode, "Patrimônio")}
-        {/* {renderItem("Manutenção", Wrench)} */}
-        {/* {renderItem("Funcionários", UsersRound)} */}
-      </>
-    )}
-  </ul>
-
-  {/* Esconde Agendamentos inteiros para Conselheiro */}
-  {user?.cargo !== "Conselheiro" && (
-    <>
-      <p style={categoryTitle}>Agendamentos</p>
-      <ul style={listStyle}>
-        {renderItem("Festas", PartyPopper, "Salão de Festas")}
-        {renderItem("Churrasqueira", Flame, "Churrasqueira")}
-        {renderItem("Mudanças", Truck)}
-        {/* {renderItem("Calendário", CalendarDays)} */}
+        {renderItem("Encomendas", ShoppingCart)}
       </ul>
     </>
   )}
 
-  <p style={categoryTitle}>Gestão Financeira</p>
-  <ul style={listStyle}>
-    {/* Esconde Inadimplentes e Multas do Conselheiro */}
-    {/* {user?.cargo !== "Conselheiro" && renderItem("Inadimplentes", CircleDollarSign)} */}
-    {renderItem("Notas", FileText)}
-    {/* {renderItem("Compras", ShoppingCart)} */}
-    {/* {user?.cargo !== "Conselheiro" && renderItem("Multas", FileX)} */}
-  </ul>
+  {/* CATEGORIA AGENDAMENTOS */}
+  {hasAnyPermission(["Festas", "Churrasqueira", "Mudanças"]) && (
+    <>
+      <p style={categoryTitle}>Agendamentos</p>
+      <ul style={listStyle}>
+        {renderItem("Festas", PartyPopper, "Salão de Festas")}
+        {renderItem("Churrasqueira", Flame)}
+        {renderItem("Mudanças", Truck)}
+      </ul>
+    </>
+  )}
+
+  {/* CATEGORIA GESTÃO FINANCEIRA */}
+  {hasAnyPermission(["Notas"]) && (
+    <>
+      <p style={categoryTitle}>Gestão Financeira</p>
+      <ul style={listStyle}>
+        {renderItem("Notas", FileText)}
+      </ul>
+    </>
+  )}
 </nav>
 
         {/* PERFIL */}

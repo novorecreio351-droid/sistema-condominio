@@ -16,7 +16,9 @@ export const ThemeProvider = ({ children }) => {
   // Definição da paleta de cores centralizada
   const theme = {
     bg: isDark ? "#0f172a" : "#f8fafc",
-    card: isDark ? "#1e293b" : "#ffffff",
+    bgBody: isDark ? "#0f172a" : "#f8fafc",
+    bgCard: isDark ? "#1e293b" : "#ffffff",
+    mainBg: isDark ? "#1e293b" : "#ffffff",
     text: isDark ? "#f8fafc" : "#1e293b",
     textSecondary: isDark ? "#94a3b8" : "#64748b",
     border: isDark ? "#334155" : "#e2e8f0",
