@@ -1,4 +1,5 @@
 /* eslint-disable no-unused-vars */
+
 import { useNavigate } from "react-router-dom"; // Certifique-se que esta linha existe
 import React, { useState, useEffect } from "react";
 import { useTheme } from "../App";
@@ -11,7 +12,7 @@ import {
   Loader2,
   Clock
 } from "lucide-react";
-
+import { can } from "../auth/permissions"; // Removi o .js
 
 const TOKEN = import.meta.env.VITE_SHEETS_TOKEN; 
 const SHEETS_URL = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8epZMJIhCmapSOxyTegLMSEGZ2jBMGIxQ4cJb4a23oveAAaW/exec";
@@ -28,20 +29,28 @@ export default function Dashboard({ user }) {
     String(text || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
 
   const handleVerDetalhes = (item) => {
-  console.log("Item clicado:", item); // Adicione isso para testar
-  let rota = "";
   const tipo = String(item.tipo).toLowerCase();
+  let acaoNecessaria = "";
 
+  // Define qual regra de permissão checar
+  if (tipo.includes("festa")) acaoNecessaria = "verDetalhesFesta";
+  else if (tipo.includes("churrasqueira")) acaoNecessaria = "verDetalhesChurrasqueira";
+  else if (tipo.includes("mudança")) acaoNecessaria = "verDetalhesMudanca";
+
+  // VERIFICAÇÃO DE PERMISSÃO
+  if (!can(user, acaoNecessaria)) {
+    alert("Você não tem permissão para ver detalhes desta reserva.");
+    return; // Interrompe a função aqui
+  }
+
+  // Se passou na permissão, segue a lógica normal
+  let rota = "";
   if (tipo.includes("festa")) rota = "/festas";
   else if (tipo.includes("churrasqueira")) rota = "/churrasqueira";
   else if (tipo.includes("mudança")) rota = "/mudancas";
 
-  console.log("Rota identificada:", rota); // Adicione isso
-  
   if (rota) {
     navigate(rota, { state: { openId: item.id } });
-  } else {
-    console.error("Nenhuma rota encontrada para o tipo:", item.tipo);
   }
 };
 

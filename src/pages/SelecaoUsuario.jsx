@@ -15,7 +15,7 @@ export default function SelecaoUsuario({ onSelectUser }) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
+  const [adminProfile, setAdminProfile] = useState(null);
   // 1. Busca os usuários da planilha ao carregar o componente
   useEffect(() => {
     const fetchUsuarios = async () => {
@@ -31,7 +31,13 @@ export default function SelecaoUsuario({ onSelectUser }) {
           icon: user.cargo?.toLowerCase().includes("síndico") ? <ShieldCheck size={32} /> : <UserCheck size={32} />
         }));
 
-        setUsuarios(usersFormatados);
+        // FILTRO: Separa o desenvolvedor da lista que vai para o grid
+        const listaPublica = usersFormatados.filter(u => u.cargo !== "Desenvolvedor");
+        const adminUser = usersFormatados.find(u => u.cargo === "Desenvolvedor");
+
+        setUsuarios(listaPublica); // Define apenas os usuários comuns
+        setAdminProfile(adminUser); // Guarda o admin separadamente
+        
       } catch (err) {
         console.error("Erro ao carregar usuários:", err);
         setError("Não foi possível carregar a lista de usuários.");
@@ -43,51 +49,39 @@ export default function SelecaoUsuario({ onSelectUser }) {
     fetchUsuarios();
   }, []);
 
-  const loginFunc = (user) => {
-  onSelectUser(user);
-  navigate("/dashboard"); // Isso força a URL a ficar correta logo após o clique
-};
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    if (!password || !selectedProfile || loading) return;
 
-  // SelecaoUsuario.jsx
-const handleLogin = async (e) => {
-  e.preventDefault();
-  if (!password || !selectedProfile || loading) return;
+    setLoading(true);
+    setError("");
 
-  setLoading(true);
-  setError("");
+    const params = new URLSearchParams({
+      token: TOKEN,
+      action: "login",
+      email: selectedProfile.email,
+      senha: password
+    });
 
-  const params = new URLSearchParams({
-    token: TOKEN,
-    action: "login",
-    email: selectedProfile.email,
-    senha: password
-  });
+    try {
+      const url = `${API_URL}?${params.toString()}`;
+      const response = await fetch(url, { method: "GET", mode: "cors", redirect: "follow" });
+      const result = await response.json();
 
-  try {
-    const url = `${API_URL}?${params.toString()}`;
-    const response = await fetch(url, { method: "GET", mode: "cors", redirect: "follow" });
-    const result = await response.json();
-
-    if (result.success) {
-      const usuarioCompleto = { ...selectedProfile, ...result.data };
-      
-      // Salva no sessionStorage para que a sessão expire ao fechar a aba
-      sessionStorage.setItem("usuarioLogado", JSON.stringify(usuarioCompleto));
-      
-      // Atualiza o estado no App.jsx
-      onSelectUser(usuarioCompleto);
-      
-      // REDIRECIONA PARA O DASHBOARD (Agora funciona pois está dentro do Router)
-      navigate("/dashboard"); 
-    } else {
-      setError(result.message || "Credenciais incorretas.");
+      if (result.success) {
+        const usuarioCompleto = { ...selectedProfile, ...result.data };
+        sessionStorage.setItem("usuarioLogado", JSON.stringify(usuarioCompleto));
+        onSelectUser(usuarioCompleto);
+        navigate("/dashboard"); 
+      } else {
+        setError(result.message || "Credenciais incorretas.");
+      }
+    } catch (err) {
+      setError("Erro de conexão com o servidor.");
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    setError("Erro de conexão com o servidor.");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   if (loadingInitial) {
     return (
@@ -190,9 +184,19 @@ const handleLogin = async (e) => {
             </div>
           </form>
         )}
-        <p style={footerNote}>Sistema Interno de Gestão Condominial &copy; 2026</p>
+       <p 
+  onClick={() => adminProfile && setSelectedProfile(adminProfile)} 
+  style={{ 
+    ...footerNote, 
+    cursor: "default", // Mantém o cursor normal para não dar na cara
+    userSelect: "none" 
+  }}
+>
+  Sistema Interno de Gestão Condominial &copy; 2026
+</p>
       </div>
       <style>{`.spinner-anim { animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      
     </div>
   );
 }
