@@ -27,3 +27,7 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Diretórios de scratch das ferramentas (planejamento/brainstorm)
+.planning/
+.superpowers/
