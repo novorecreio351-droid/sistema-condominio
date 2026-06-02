@@ -59,6 +59,7 @@ const hasAnyPermission = (items) => {
   Festas: [ROLES.SINDICO, ROLES.AUX, ROLES.DEV],
   Churrasqueira: [ROLES.SINDICO, ROLES.AUX, ROLES.DEV],
   Mudanças: [ROLES.SINDICO, ROLES.AUX, ROLES.DEV],
+  Agendamento: [ROLES.SINDICO, ROLES.AUX, ROLES.DEV],
 
   Notas: [ROLES.SINDICO, ROLES.AUX, ROLES.DEV],
 };
@@ -200,7 +201,7 @@ const canAccess = (label) => {
         {renderItem("Dashboard", LayoutDashboard)}
         {renderItem("Unidades", Building2)}
         {renderItem("Moradores", Users)}
-        {renderItem("Vagas", Car)}
+        {renderItem("Vagas", Car)}  
         {renderItem("Piscina", Waves)}
         {renderItem("Comunicado", Megaphone)}
         {renderItem("Encomendas", ShoppingCart)}
@@ -209,13 +210,14 @@ const canAccess = (label) => {
   )}
 
   {/* CATEGORIA AGENDAMENTOS */}
-  {hasAnyPermission(["Festas", "Churrasqueira", "Mudanças"]) && (
+  {hasAnyPermission(["Festas", "Churrasqueira", "Mudanças", "Agendamento"]) && (
     <>
       <p style={categoryTitle}>Agendamentos</p>
       <ul style={listStyle}>
         {renderItem("Festas", PartyPopper, "Salão de Festas")}
         {renderItem("Churrasqueira", Flame)}
         {renderItem("Mudanças", Truck)}
+        {renderItem("Agendamento", CalendarDays)}
       </ul>
     </>
   )}
