@@ -226,8 +226,9 @@ Handlers em Encomendas/Festas/Churrasqueira/Piscina/Compras/Mudancas confiam só
 
 ## Prioridade de correção
 1. ✅ **Rotacionar chaves de IA + remover fallback** (N1) — FEITO (deploy @115).
-2. 🟡 **Autorização server-side por cargo + sessão assinada** (N5) — CÓDIGO IMPLEMENTADO (Fase 2, deploy @116),
-   **pendente ligar o flag** `ENFORCE_SESSION=true` após definir `SESSION_SECRET` e deployar o frontend. Ver abaixo.
+2. ✅ **Autorização server-side por cargo + sessão assinada** (N5) — ATIVO em produção (Fase 2, deploy @116,
+   `ENFORCE_SESSION=true`). Validado: leitura/escrita exigem sessão; cargo vem da planilha (sem escalonamento);
+   sessão ausente/adulterada é recusada.
 3. ✅ **`getFoto` IDOR + allow-list de abas** (N2, N3) — FEITO (deploy @113).
 4. ✅ **XSS de impressão do Comunicado** (N4) — FEITO.
 5. ✅ **Quick-wins frontend** (N8, N9, N11, N12, N13, N6-export) — FEITO.
