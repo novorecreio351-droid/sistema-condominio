@@ -7,6 +7,7 @@ import {
   FileText, Download, RotateCcw, CheckCircle2, AlertCircle, User, Paperclip, UploadCloud, ChevronDown
 } from "lucide-react";
 import { useTheme } from "../App";
+import { sessionParam, getSessionToken } from "../auth/session";
 
 // Bibliotecas para exportação
 import { jsPDF } from "jspdf";
@@ -38,7 +39,7 @@ const fotoCache = new Map();
 function fetchFotoCached(fileId) {
   if (!fileId) return Promise.resolve("");
   if (fotoCache.has(fileId)) return fotoCache.get(fileId);
-  const p = fetch(`${API_URL}?token=${TOKEN}&action=getFoto&fileId=${encodeURIComponent(fileId)}`)
+  const p = fetch(`${API_URL}?token=${TOKEN}&action=getFoto&fileId=${encodeURIComponent(fileId)}${sessionParam()}`)
     .then((r) => r.json())
     .then((d) => (d && d.success && d.base64 ? `data:${d.contentType || "image/jpeg"};base64,${d.base64}` : ""))
     .catch(() => "");
@@ -142,9 +143,9 @@ const extrairIdDrive = (urlOuId) => {
 
     try {
       // Chama o seu Apps Script (aquela função action === "getFoto" que você criou)
-      const response = await fetch(`${API_URL}?token=${TOKEN}&action=getFoto&fileId=${fileId}`);
+      const response = await fetch(`${API_URL}?token=${TOKEN}&action=getFoto&fileId=${fileId}${sessionParam()}`);
       const result = await response.json();
-      
+
       if (result.success) {
         return `data:${result.contentType};base64,${result.base64}`;
       }
@@ -170,7 +171,7 @@ const extrairIdDrive = (urlOuId) => {
     }
 
     // 2. Buscar o Base64 real (Seu Proxy no Apps Script)
-    const resp = await fetch(`${API_URL}?token=${TOKEN}&action=getFoto&fileId=${fileId}`);
+    const resp = await fetch(`${API_URL}?token=${TOKEN}&action=getFoto&fileId=${fileId}${sessionParam()}`);
     const result = await resp.json();
 
     if (!result.success) throw new Error(result.message);
@@ -423,10 +424,10 @@ const formatDateTimeForInput = (dateTimeStr) => {
     setLoadingInitial(true);
 
     const [resPiscina, resUnidades, resMoradores, resUploads] = await Promise.all([
-      fetch(`${API_URL}?token=${TOKEN}&sheet=PISCINA`, { method: "GET", redirect: "follow" }).then(r => r.json()),
-      fetch(`${API_URL}?token=${TOKEN}&sheet=UNIDADES`, { method: "GET", redirect: "follow" }).then(r => r.json()),
-      fetch(`${API_URL}?token=${TOKEN}&sheet=MORADORES`, { method: "GET", redirect: "follow" }).then(r => r.json()),
-      fetch(`${API_URL}?token=${TOKEN}&sheet=UPLOADS_PISCINA`, { method: "GET", redirect: "follow" }).then(r => r.json()),
+      fetch(`${API_URL}?token=${TOKEN}&sheet=PISCINA${sessionParam()}`, { method: "GET", redirect: "follow" }).then(r => r.json()),
+      fetch(`${API_URL}?token=${TOKEN}&sheet=UNIDADES${sessionParam()}`, { method: "GET", redirect: "follow" }).then(r => r.json()),
+      fetch(`${API_URL}?token=${TOKEN}&sheet=MORADORES${sessionParam()}`, { method: "GET", redirect: "follow" }).then(r => r.json()),
+      fetch(`${API_URL}?token=${TOKEN}&sheet=UPLOADS_PISCINA${sessionParam()}`, { method: "GET", redirect: "follow" }).then(r => r.json()),
     ]);
 
 
@@ -693,10 +694,11 @@ const handleDeleteImage = async (uploadId) => {
     await fetch(API_URL, {
       method: "POST",
       mode: "no-cors", 
-      body: JSON.stringify({ 
-        token: TOKEN, 
-        action: "delete", 
-        sheet: "UPLOADS_CHURRASQUEIRA", 
+      body: JSON.stringify({
+        token: TOKEN,
+        session: getSessionToken(),
+        action: "delete",
+        sheet: "UPLOADS_CHURRASQUEIRA",
         id: uploadId.toString()
       })
     });
@@ -752,6 +754,7 @@ const handleSave = async () => {
 
   const payload = {
     token: TOKEN,
+    session: getSessionToken(),
     action: modalType === "add" ? "add" : "edit",
     sheet: "PISCINA",
     id: modalType === "add" ? "SEQUENTIAL" : formData.id.toString(),
@@ -799,6 +802,7 @@ const handleSave = async () => {
     try {
       const payload = {
         token: TOKEN,
+        session: getSessionToken(),
         action: "delete",
         sheet: "PISCINA",
         id: id.toString(),

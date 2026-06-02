@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useTheme } from "../App";
-import { 
+import { getSessionToken } from "../auth/session";
+import {
   Bot, Sparkles, Lightbulb, MoreHorizontal, 
   Bold, Italic, AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Type, List, ListOrdered, Quote, Undo, Redo, Eraser, Highlighter,FileText, Image, Printer
@@ -108,7 +109,7 @@ const a4Ref = useRef();
       const response = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ token: TOKEN, action: "gerarIA", prompt, tom }),
+        body: JSON.stringify({ token: TOKEN, session: getSessionToken(), action: "gerarIA", prompt, tom }),
       });
       const data = await response.json();
       if (!data?.success) throw new Error(data?.message || "Falha ao gerar conteúdo.");

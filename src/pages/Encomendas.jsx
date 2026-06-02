@@ -8,6 +8,7 @@ import {
   ChevronDown, UploadCloud, Camera, MapPin, Archive
 } from "lucide-react";
 import { useTheme } from "../App";
+import { sessionParam, getSessionToken } from "../auth/session";
 
 const API_URL = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8epZMJIhCmapSOxyTegLMSEGZ2jBMGIxQ4cJb4a23oveAAaW/exec";
 const TOKEN = import.meta.env.VITE_SHEETS_TOKEN;
@@ -180,10 +181,10 @@ export default function Encomendas({ user }) {
     try {
       setLoadingInitial(true);
       const [resEnc, resUni, resMor, resFotos] = await Promise.all([
-        fetch(`${API_URL}?token=${TOKEN}&sheet=ENTREGAS`).then(r => r.json()),
-        fetch(`${API_URL}?token=${TOKEN}&sheet=UNIDADES`).then(r => r.json()),
-        fetch(`${API_URL}?token=${TOKEN}&sheet=MORADORES`).then(r => r.json()),
-        fetch(`${API_URL}?token=${TOKEN}&sheet=ENTREGAS_FOTO`).then(r => r.json())
+        fetch(`${API_URL}?token=${TOKEN}&sheet=ENTREGAS${sessionParam()}`).then(r => r.json()),
+        fetch(`${API_URL}?token=${TOKEN}&sheet=UNIDADES${sessionParam()}`).then(r => r.json()),
+        fetch(`${API_URL}?token=${TOKEN}&sheet=MORADORES${sessionParam()}`).then(r => r.json()),
+        fetch(`${API_URL}?token=${TOKEN}&sheet=ENTREGAS_FOTO${sessionParam()}`).then(r => r.json())
       ]);
       const encomendasLoaded = Array.isArray(resEnc) ? resEnc : [];
       setEncomendas(encomendasLoaded);
@@ -264,7 +265,7 @@ export default function Encomendas({ user }) {
   // Busca leve: somente a aba ENTREGAS (usada no fallback de polling do código)
   const fetchEntregasOnly = async () => {
     try {
-      const res = await fetch(`${API_URL}?token=${TOKEN}&sheet=ENTREGAS`).then(r => r.json());
+      const res = await fetch(`${API_URL}?token=${TOKEN}&sheet=ENTREGAS${sessionParam()}`).then(r => r.json());
       return Array.isArray(res) ? res : [];
     } catch (e) {
       console.warn("fetchEntregasOnly: erro ao buscar ENTREGAS", e);
@@ -372,7 +373,7 @@ export default function Encomendas({ user }) {
     const cache = photoCacheRef.current;
     if (cache.has(fileId)) return cache.get(fileId);
     try {
-      const d = await fetch(`${API_URL}?token=${TOKEN}&action=getFoto&fileId=${encodeURIComponent(fileId)}`).then((r) => r.json());
+      const d = await fetch(`${API_URL}?token=${TOKEN}&action=getFoto&fileId=${encodeURIComponent(fileId)}${sessionParam()}`).then((r) => r.json());
       const src = d && d.success && d.base64 ? `data:${d.contentType || "image/jpeg"};base64,${d.base64}` : null;
       if (src) cache.set(fileId, src);
       return src;
@@ -482,6 +483,7 @@ export default function Encomendas({ user }) {
     const createDateToken = new Date().toISOString();
     const payload = {
       token: TOKEN,
+      session: getSessionToken(),
       action: "add",
       sheet: "ENTREGAS",
       id: "SEQUENTIAL",
@@ -659,6 +661,7 @@ export default function Encomendas({ user }) {
         headers: { "Content-Type": "text/plain" },
         body: JSON.stringify({
           token: TOKEN,
+          session: getSessionToken(),
           action: "edit",
           sheet: "ENTREGAS",
           id: serverId,
@@ -771,6 +774,7 @@ export default function Encomendas({ user }) {
         headers: { "Content-Type": "text/plain" },
         body: JSON.stringify({
           token: TOKEN,
+          session: getSessionToken(),
           action: "edit",
           sheet: "ENTREGAS",
           id: serverId,
