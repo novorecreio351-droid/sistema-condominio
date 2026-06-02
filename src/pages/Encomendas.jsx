@@ -88,6 +88,13 @@ export default function Encomendas({ user }) {
   const [deliveryNomeMorador, setDeliveryNomeMorador] = useState("");
   const [deliveryLoadingUpload, setDeliveryLoadingUpload] = useState(false);
 
+  // Estados para o fluxo de Armazenamento
+  const [showArmazenarModal, setShowArmazenarModal] = useState(false);
+  const [armazenarItem, setArmazenarItem] = useState(null);
+  const [armazenarLocal, setArmazenarLocal] = useState("");
+  const [armazenarPor, setArmazenarPor] = useState("");
+  const [armazenarLoading, setArmazenarLoading] = useState(false);
+
   const [formErrors, setFormErrors] = useState({});
 
   // Form Data
@@ -601,6 +608,74 @@ export default function Encomendas({ user }) {
     setDeliveryItem(item);
     setConfirmDeliveryCode("");
     setShowConfirmDeliveryModal(true);
+  };
+
+  const handleAbrirArmazenar = (item) => {
+    setArmazenarItem(item);
+    setArmazenarLocal("");
+    setArmazenarPor("");
+    setShowArmazenarModal(true);
+  };
+
+  const handleConfirmArmazenar = async () => {
+    if (!armazenarItem) return;
+    const local = armazenarLocal.trim();
+    const por = armazenarPor.trim();
+    if (!local || !por) return;
+
+    setArmazenarLoading(true);
+    const novoStatus = "Armazenado";
+    const dataArmazenado = new Date().toISOString();
+    const serverId = getCell(armazenarItem, "id") || getCell(armazenarItem, "ID");
+
+    const updated = encomendas.map((entry) => {
+      const entryId = (getCell(entry, "id") || getCell(entry, "ID") || "").toString();
+      if (entryId === serverId.toString()) {
+        return {
+          ...entry,
+          STATUS: novoStatus, status: novoStatus,
+          ARMAZENADO_LOCAL: local, armazenado_local: local,
+          ARMAZENADO_POR: por, armazenado_por: por,
+          ARMAZENADO_DATA: dataArmazenado, armazenado_data: dataArmazenado,
+        };
+      }
+      return entry;
+    });
+    setEncomendas(updated);
+
+    try {
+      await fetch(API_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({
+          token: TOKEN,
+          action: "edit",
+          sheet: "ENTREGAS",
+          id: serverId,
+          user: user?.nome || "Sistema",
+          data: {
+            status: novoStatus,
+            armazenado_local: local,
+            armazenado_por: por,
+            armazenado_data: dataArmazenado
+          }
+        })
+      });
+
+      setShowArmazenarModal(false);
+      setArmazenarItem(null);
+      setArmazenarLocal("");
+      setArmazenarPor("");
+      setShowViewDetails(false);
+      setSelectedDetails(null);
+      await fetchData();
+    } catch (error) {
+      console.error("Erro ao armazenar:", error);
+      alert("Erro ao armazenar. Tente novamente.");
+    } finally {
+      setArmazenarLoading(false);
+    }
   };
 
   const handleConfirmDelivery = async () => {
@@ -1527,6 +1602,20 @@ export default function Encomendas({ user }) {
                   </div>
                 </div>
 
+                {(getCell(selectedDetails, 'STATUS') || getCell(selectedDetails, 'status') || '').toString().toUpperCase() === 'ARMAZENADO' && (
+                  <div style={{ padding: '16px', borderRadius: '14px', backgroundColor: theme.bg, border: `1px solid ${theme.border}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                      <Archive size={18} color="#2563eb" />
+                      <span style={{ fontSize: '12px', fontWeight: '700', color: theme.textSecondary, textTransform: 'uppercase' }}>Dados de Armazenamento</span>
+                    </div>
+                    <div style={{ display: 'grid', gap: '10px', fontSize: '13px' }}>
+                      <div><span style={{ color: theme.textSecondary, fontWeight: '600' }}>Local:</span> <span style={{ color: theme.text, fontWeight: '700' }}>{getCell(selectedDetails, 'ARMAZENADO_LOCAL') || getCell(selectedDetails, 'armazenado_local') || '—'}</span></div>
+                      <div><span style={{ color: theme.textSecondary, fontWeight: '600' }}>Armazenado por:</span> <span style={{ color: theme.text, fontWeight: '700' }}>{getCell(selectedDetails, 'ARMAZENADO_POR') || getCell(selectedDetails, 'armazenado_por') || '—'}</span></div>
+                      <div><span style={{ color: theme.textSecondary, fontWeight: '600' }}>Data:</span> <span style={{ color: theme.text }}>{formatDateTime(getCell(selectedDetails, 'ARMAZENADO_DATA') || getCell(selectedDetails, 'armazenado_data')) || '—'}</span></div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Card Observações */}
                 {(getCell(selectedDetails, 'OBS') || getCell(selectedDetails, 'observacoes') || getCell(selectedDetails, 'obs')) && (
                   <div style={{ padding: '16px', borderRadius: '14px', backgroundColor: theme.bg, border: `1px solid ${theme.border}` }}>
@@ -1550,6 +1639,15 @@ export default function Encomendas({ user }) {
                       📱 Reenviar Notificação
                     </button>
                   )}
+                  {isAtrasadoArmazenar(selectedDetails) && (
+                    <button
+                      type="button"
+                      onClick={() => handleAbrirArmazenar(selectedDetails)}
+                      style={{ width: '100%', padding: '12px 18px', borderRadius: '12px', border: 'none', backgroundColor: '#2563eb', color: 'white', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s' }}
+                    >
+                      📦 Armazenar
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => {
@@ -1571,6 +1669,83 @@ export default function Encomendas({ user }) {
                     {['RETIRADO', 'ENTREGUE'].includes((getCell(selectedDetails, 'STATUS') || getCell(selectedDetails, 'status') || '').toString().toUpperCase()) ? '✓ Já Entregue' : '✓ Confirmar Entrega'}
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showArmazenarModal && armazenarItem && (
+        <div style={modalOverlay}>
+          <div style={{ ...modalContent, backgroundColor: theme.bgCard, color: theme.text, maxWidth: '480px', width: '95%' }}>
+            <div style={modalHeader}>
+              <div>
+                <div style={{ fontSize: '18px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  📦 Armazenar Encomenda
+                </div>
+                <div style={{ fontSize: '13px', color: theme.textSecondary, marginTop: '4px' }}>Registre o local e o responsável pelo armazenamento</div>
+              </div>
+              <X size={24} cursor="pointer" onClick={() => {
+                setShowArmazenarModal(false);
+                setArmazenarItem(null);
+                setArmazenarLocal("");
+                setArmazenarPor("");
+              }} />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', padding: '8px 0' }}>
+              <div>
+                <label style={labelStyle}>Local Armazenado</label>
+                <input
+                  type="text"
+                  value={armazenarLocal}
+                  onChange={(e) => setArmazenarLocal(e.target.value)}
+                  style={{ ...selectStyle, width: '100%', backgroundColor: theme.bgBody, color: theme.text, borderColor: theme.border }}
+                  placeholder="Ex: Prateleira 3, Sala do Armazém..."
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Nome de Quem Armazenou</label>
+                <input
+                  type="text"
+                  value={armazenarPor}
+                  onChange={(e) => setArmazenarPor(e.target.value)}
+                  style={{ ...selectStyle, width: '100%', backgroundColor: theme.bgBody, color: theme.text, borderColor: theme.border }}
+                  placeholder="Digite o nome completo"
+                />
+              </div>
+
+              <div style={{ fontSize: '12px', color: theme.textSecondary, backgroundColor: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '10px', padding: '10px 12px' }}>
+                🕒 A data e o horário do armazenamento serão registrados automaticamente agora.
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', paddingTop: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowArmazenarModal(false);
+                    setArmazenarItem(null);
+                    setArmazenarLocal("");
+                    setArmazenarPor("");
+                  }}
+                  style={{ backgroundColor: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, padding: '12px 20px', borderRadius: '12px', cursor: 'pointer', fontWeight: '600' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmArmazenar}
+                  disabled={!armazenarLocal.trim() || !armazenarPor.trim() || armazenarLoading}
+                  style={{
+                    backgroundColor: !armazenarLocal.trim() || !armazenarPor.trim() || armazenarLoading ? '#94a3b8' : '#2563eb',
+                    color: 'white', border: 'none', padding: '12px 20px', borderRadius: '12px',
+                    cursor: !armazenarLocal.trim() || !armazenarPor.trim() || armazenarLoading ? 'not-allowed' : 'pointer',
+                    fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px'
+                  }}
+                >
+                  {armazenarLoading ? <Loader2 style={spinnerAnimation} size={18} /> : '📦 Confirmar Armazenamento'}
+                </button>
               </div>
             </div>
           </div>
