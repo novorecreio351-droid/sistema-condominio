@@ -20,6 +20,7 @@ import Comunicado from "./pages/Comunicado";
 import Patrimonio from "./pages/Patrimonio";
 import Encomendas from "./pages/Encomendas";
 import Agendamento from "./pages/Agendamento";
+import { clearSessionToken } from "./auth/session";
 
 // ================= CONTEXTO DE TEMA =================
 const ThemeContext = createContext();
@@ -86,6 +87,7 @@ const handleLogout = () => {
   setUsuarioLogado(null);
   setActiveTab("Dashboard");
   sessionStorage.clear(); // Opcional: limpa tudo do usuário ao deslogar
+  clearSessionToken();
 };
 
   // ================= ATUALIZA ATIVIDADE =================

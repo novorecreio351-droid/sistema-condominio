@@ -2,6 +2,7 @@
 import { useNavigate } from "react-router-dom";
 import React, { useState, useEffect } from "react";
 import { UserCheck, ShieldCheck, ArrowRight, Building2, Lock, Loader2, ChevronLeft } from "lucide-react";
+import { setSessionToken } from "../auth/session";
 
 const TOKEN = import.meta.env.VITE_SHEETS_TOKEN;
 const API_URL = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8epZMJIhCmapSOxyTegLMSEGZ2jBMGIxQ4cJb4a23oveAAaW/exec";
@@ -77,6 +78,7 @@ export default function SelecaoUsuario({ onSelectUser }) {
         const { senha, password, ...dadosUsuario } = result.data || {};
         const usuarioCompleto = { ...selectedProfile, ...dadosUsuario };
         sessionStorage.setItem("usuarioLogado", JSON.stringify(usuarioCompleto));
+        setSessionToken(result.session || "");
         onSelectUser(usuarioCompleto);
         navigate("/dashboard");
       } else {
