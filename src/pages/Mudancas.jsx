@@ -13,6 +13,7 @@ import { useTheme } from "../App";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
+import { sessionParam, getSessionToken } from "../auth/session";
 
 const API_URL = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8epZMJIhCmapSOxyTegLMSEGZ2jBMGIxQ4cJb4a23oveAAaW/exec";
 const TOKEN = import.meta.env.VITE_SHEETS_TOKEN;
@@ -217,9 +218,9 @@ useEffect(() => {
     
     // 1. Busca inicial dos dados
     const [resMudancas, resUnidades, resMoradores] = await Promise.all([
-      fetch(`${API_URL}?token=${TOKEN}&sheet=MUDANCAS`, { method: "GET", redirect: "follow" }).then(r => r.json()),
-      fetch(`${API_URL}?token=${TOKEN}&sheet=UNIDADES`, { method: "GET", redirect: "follow" }).then(r => r.json()),
-      fetch(`${API_URL}?token=${TOKEN}&sheet=MORADORES`, { method: "GET", redirect: "follow" }).then(r => r.json()),
+      fetch(`${API_URL}?token=${TOKEN}&sheet=MUDANCAS${sessionParam()}`, { method: "GET", redirect: "follow" }).then(r => r.json()),
+      fetch(`${API_URL}?token=${TOKEN}&sheet=UNIDADES${sessionParam()}`, { method: "GET", redirect: "follow" }).then(r => r.json()),
+      fetch(`${API_URL}?token=${TOKEN}&sheet=MORADORES${sessionParam()}`, { method: "GET", redirect: "follow" }).then(r => r.json()),
     ]);
 
     let dadosTratados = Array.isArray(resMudancas) ? resMudancas : [];
@@ -511,9 +512,10 @@ const formatToInputDateTime = (dateStr) => {
   // 3. PROCESSO DE ENVIO
   setLoadingGlobal(true);
   
-  const payload = { 
-    token: TOKEN, 
-    action: modalType === "add" ? "add" : "edit", 
+  const payload = {
+    token: TOKEN,
+    session: getSessionToken(),
+    action: modalType === "add" ? "add" : "edit",
     sheet: "MUDANCAS",
     id: modalType === "add" ? Date.now().toString() : formData.id.toString(),
     
@@ -571,6 +573,7 @@ const formatToInputDateTime = (dateStr) => {
         method: "POST",
         body: JSON.stringify({
           token: TOKEN,
+          session: getSessionToken(),
           action: "delete",
           sheet: "MUDANCAS", // Nome idêntico ao que o Apps Script espera
           id: id.toString()
@@ -798,6 +801,7 @@ const verificarEAtualizarStatus = async (listaMudancas) => {
       // Sem no-cors aqui para garantir o await real
       body: JSON.stringify({
         token: TOKEN,
+        session: getSessionToken(),
         action: "edit",
         sheet: "MUDANCAS",
         ...mudanca,

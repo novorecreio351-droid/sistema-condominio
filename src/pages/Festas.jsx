@@ -13,6 +13,7 @@ import { useTheme } from "../App";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
+import { sessionParam, getSessionToken } from "../auth/session";
 
 const API_URL = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8epZMJIhCmapSOxyTegLMSEGZ2jBMGIxQ4cJb4a23oveAAaW/exec";
 const TOKEN = import.meta.env.VITE_SHEETS_TOKEN;
@@ -151,6 +152,7 @@ const verificarEAtualizarStatus = async (listaFestas) => {
         method: "POST",
         body: JSON.stringify({
           token: TOKEN,
+          session: getSessionToken(),
           action: "edit",
           sheet: "FESTAS",
           ...festa,
@@ -244,10 +246,10 @@ useEffect(() => {
     
     // Adicionamos { method: "GET", redirect: "follow" } em cada requisição
     const [resFestas, resUnidades, resMoradores, resUploads] = await Promise.all([
-      fetch(`${API_URL}?token=${TOKEN}&sheet=FESTAS`, { method: "GET", redirect: "follow" }).then(r => r.json()),
-      fetch(`${API_URL}?token=${TOKEN}&sheet=UNIDADES`, { method: "GET", redirect: "follow" }).then(r => r.json()),
-      fetch(`${API_URL}?token=${TOKEN}&sheet=MORADORES`, { method: "GET", redirect: "follow" }).then(r => r.json()),
-      fetch(`${API_URL}?token=${TOKEN}&sheet=UPLOADS_FESTAS`, { method: "GET", redirect: "follow" }).then(r => r.json()),
+      fetch(`${API_URL}?token=${TOKEN}&sheet=FESTAS${sessionParam()}`, { method: "GET", redirect: "follow" }).then(r => r.json()),
+      fetch(`${API_URL}?token=${TOKEN}&sheet=UNIDADES${sessionParam()}`, { method: "GET", redirect: "follow" }).then(r => r.json()),
+      fetch(`${API_URL}?token=${TOKEN}&sheet=MORADORES${sessionParam()}`, { method: "GET", redirect: "follow" }).then(r => r.json()),
+      fetch(`${API_URL}?token=${TOKEN}&sheet=UPLOADS_FESTAS${sessionParam()}`, { method: "GET", redirect: "follow" }).then(r => r.json()),
     ]);
 
     const listaFestas = Array.isArray(resFestas) ? resFestas : [];
@@ -864,10 +866,11 @@ const handleDeleteImage = async (uploadId) => {
     await fetch(API_URL, {
       method: "POST",
       mode: "no-cors", 
-      body: JSON.stringify({ 
-        token: TOKEN, 
-        action: "delete", 
-        sheet: "UPLOADS_FESTAS", 
+      body: JSON.stringify({
+        token: TOKEN,
+        session: getSessionToken(),
+        action: "delete",
+        sheet: "UPLOADS_FESTAS",
         id: uploadId.toString()
       })
     });
@@ -946,10 +949,11 @@ const getFotosFestaInterno = (festaId, listaDeUploads) => {
   // 3. PROCESSO DE ENVIO
   setLoadingGlobal(true); // ATIVA O LOADING
   
-  const payload = { 
-    token: TOKEN, 
-    action: modalType === "add" ? "add" : "edit", 
-    sheet: "FESTAS", 
+  const payload = {
+    token: TOKEN,
+    session: getSessionToken(),
+    action: modalType === "add" ? "add" : "edit",
+    sheet: "FESTAS",
     uploadSheet: "UPLOADS_FESTAS",
     id: modalType === "add" ? Date.now().toString() : formData.id.toString(),
     ...formData,
@@ -999,6 +1003,7 @@ const getFotosFestaInterno = (festaId, listaDeUploads) => {
             method: "POST",
             body: JSON.stringify({
               token: TOKEN,
+              session: getSessionToken(),
               action: "delete",
               sheet: "UPLOADS_FESTAS",
               id: (anexo.id || anexo.ID).toString(),
@@ -1012,6 +1017,7 @@ const getFotosFestaInterno = (festaId, listaDeUploads) => {
           method: "POST",
           body: JSON.stringify({
             token: TOKEN,
+            session: getSessionToken(),
             action: "delete",
             sheet: "FESTAS",
             id: id.toString()
