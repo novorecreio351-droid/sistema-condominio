@@ -45,7 +45,14 @@ const fullScreenLoaderOverlay = { position: 'fixed', top: 0, left: 0, width: '10
 
 export default function Festas({ user }) {
   const { theme } = useTheme();
-  
+
+  const abrirUrlSegura = (url) => {
+    if (!url) return;
+    const s = url.toString().trim();
+    if (!/^https?:\/\//i.test(s)) { alert("Link inválido ou não seguro."); return; }
+    window.open(s, "_blank", "noopener,noreferrer");
+  };
+
   const [festas, setFestas] = useState([]);
   const [unidades, setUnidades] = useState([]);
   const [moradores, setMoradores] = useState([]);
@@ -2199,7 +2206,7 @@ const itensExibidos = React.useMemo(() => {
   return (
     <div key={idx} style={{ textAlign: 'center' }}>
       <div 
-        onClick={() => window.open(urlOriginal, '_blank')}
+        onClick={() => abrirUrlSegura(urlOriginal)}
         style={{
           width: '100%', 
           height: '100px', 

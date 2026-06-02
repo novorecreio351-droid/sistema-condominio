@@ -98,6 +98,13 @@ const fullScreenLoaderOverlay = { position: 'fixed', top: 0, left: 0, width: '10
 export default function Piscina({ user }) {
   const { theme } = useTheme();
 
+  const abrirUrlSegura = (url) => {
+    if (!url) return;
+    const s = url.toString().trim();
+    if (!/^https?:\/\//i.test(s)) { alert("Link inválido ou não seguro."); return; }
+    window.open(s, "_blank", "noopener,noreferrer");
+  };
+
   const [isDownloading, setIsDownloading] = useState(false); // Sugestão: estado para o loader do botão
   const [loading, setLoading] = useState(false);
   const [festas, setFestas] = useState([]);
@@ -1951,8 +1958,8 @@ const handleSort = (key) => {
       <div style={{display:'flex', flexDirection:'column', gap: 5}}>
         <a 
           href={selectedFesta.url_atestado || `https://drive.google.com/uc?id=${selectedFesta.id_atestado_drive}`} 
-          target="_blank" 
-          rel="noreferrer" 
+          target="_blank"
+          rel="noopener noreferrer"
           style={{color: '#3b82f6', textDecoration: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4}}
         >
           <FileText size={16}/> Abrir Atestado
