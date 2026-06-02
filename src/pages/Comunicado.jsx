@@ -20,6 +20,10 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { useRef } from "react";
 
+// As chamadas de IA passam pelo backend (proxy) para que as chaves NÃO fiquem no frontend.
+const API_URL = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8epZMJIhCmapSOxyTegLMSEGZ2jBMGIxQ4cJb4a23oveAAaW/exec";
+const TOKEN = import.meta.env.VITE_SHEETS_TOKEN;
+
 export default function Comunicado() {
   const { theme } = useTheme();
   const [prompt, setPrompt] = useState("");
@@ -99,54 +103,16 @@ const a4Ref = useRef();
     setIsGerando(true);
 
     try {
-      const API_KEY = import.meta.env.VITE_API_KEY_IA;
+      // Proxy de IA no backend — Gemini com fallback Groq são tratados no servidor.
       let textoBruto = "";
-
-      try {
-        const response = await fetch(
-          "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-goog-api-key": API_KEY,
-            },
-            body: JSON.stringify({
-              contents: [{
-                parts: [{
-                  text: `Atue como um síndico profissional. Condomínio: Novo Recreio. Assunto: ${prompt}. Tom: ${tom}. Regras estritas: 1. Retorne o conteúdo dividido em duas partes exatamente assim: [TITULO] Aqui o título curto em letras maiúsculas [CORPO] Aqui o conteúdo do comunicado em HTML. 2. No [CORPO], use apenas as tags: <p>, <strong>, <br>. 3. Não use markdown, não use crases. 4. Não inclua "Atenciosamente". 5. Não inclua saudações finais. 6. O título sem ter escrito COMUNICADO já vem no meu código.`,
-                }],
-              }],
-            }),
-          }
-        );
-        const data = await response.json();
-        if (!response.ok) throw new Error(data?.error?.message || "Erro Gemini");
-        textoBruto = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      } catch (err) {
-        console.warn("Gemini falhou, tentando Groq...", err);
-        const GROQ_KEY = import.meta.env.VITE_API_KEY_GROQ;
-        const responseGroq = await fetch(
-          "https://api.groq.com/openai/v1/chat/completions",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${GROQ_KEY}`,
-            },
-            body: JSON.stringify({
-              model: "openai/gpt-oss-20b",
-              messages: [{
-                role: "user",
-                content: `Atue como um síndico profissional. Condomínio: Novo Recreio. Assunto: ${prompt}. Tom: ${tom}. Regras estritas: 1. Retorne o conteúdo dividido em duas partes exatamente assim: [TITULO] Aqui o título curto em letras maiúsculas [CORPO] Aqui o conteúdo do comunicado em HTML. 2. No [CORPO], use apenas as tags: <p>, <strong>, <br>. 3. Não use markdown, não use crases. 4. Não inclua "Atenciosamente". 5. Não inclua saudações finais. 6. O título sem "COMUNICADO"`,
-              }],
-            }),
-          }
-        );
-        const dataGroq = await responseGroq.json();
-        if (!responseGroq.ok) throw new Error(dataGroq?.error?.message || "Erro Groq");
-        textoBruto = dataGroq.choices?.[0]?.message?.content || "";
-      }
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({ token: TOKEN, action: "gerarIA", prompt, tom }),
+      });
+      const data = await response.json();
+      if (!data?.success) throw new Error(data?.message || "Falha ao gerar conteúdo.");
+      textoBruto = data.texto || "";
 
       textoBruto = textoBruto.replace(/```html|```/gi, "").trim();
 
@@ -247,6 +213,13 @@ const baixarImagem = async () => {
   }
 };
 
+const escapeHtml = (str) => String(str ?? "")
+  .replace(/&/g, "&amp;")
+  .replace(/</g, "&lt;")
+  .replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;")
+  .replace(/'/g, "&#39;");
+
 const imprimir = () => {
   const conteudo = a4Ref.current.innerHTML;
   const tituloDocumento = titulo || "Comunicado";
@@ -256,7 +229,7 @@ const imprimir = () => {
   janela.document.write(`
     <html>
       <head>
-        <title>${tituloDocumento}</title>
+        <title>${escapeHtml(tituloDocumento)}</title>
         <style>
           @page { size: A4; margin: 0; }
           body { margin: 0; padding: 0; background-color: white; font-family: Arial, sans-serif; }
@@ -310,17 +283,12 @@ const imprimir = () => {
         <div class="print-container">
           ${conteudo}
         </div>
-        <script>
-          window.onload = () => {
-            window.print();
-            setTimeout(() => { window.close(); }, 500);
-          };
-        </script>
       </body>
     </html>
   `);
 
   janela.document.close();
+  janela.onload = () => { janela.focus(); janela.print(); };
 };
 
 const compartilharImagemWhatsApp = async () => {
