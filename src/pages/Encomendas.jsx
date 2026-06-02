@@ -439,9 +439,17 @@ export default function Encomendas({ user }) {
     setFormData((prev) => ({ ...prev, fotosBase64: [] }));
   };
 
+  const arquivoValido = (file) => {
+    if (!file) return false;
+    const MAX = 10 * 1024 * 1024;
+    if (!(file.type || "").toLowerCase().startsWith("image/")) { alert("Apenas imagens são permitidas."); return false; }
+    if (file.size > MAX) { alert("Arquivo muito grande (máx. 10 MB)."); return false; }
+    return true;
+  };
+
   const handleFileChange = (e) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
+    const files = Array.from(e.target.files || []).filter(arquivoValido);
+    if (files.length === 0) { e.target.value = ""; return; }
 
     Promise.all(files.map(file => new Promise((resolve) => {
       const reader = new FileReader();
@@ -592,6 +600,7 @@ export default function Encomendas({ user }) {
     if (files.length === 0) return;
 
     const file = files[0];
+    if (!file || !arquivoValido(file)) { e.target.value = ""; return; }
     const reader = new FileReader();
     reader.onloadend = () => {
       setDeliveryPhotoBase64(reader.result);

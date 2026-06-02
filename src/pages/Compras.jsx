@@ -175,8 +175,19 @@ const [tempProduto, setTempProduto] = useState({ nome: "", qtd: 1, valor: "" });
     setStatusDisponiveis(["Todos", ...new Set(sts)]);
   };
 
+  const arquivoValido = (file) => {
+    if (!file) return false;
+    const MAX = 10 * 1024 * 1024;
+    const tipo = (file.type || "").toLowerCase();
+    const ok = tipo.startsWith("image/") || tipo === "application/pdf";
+    if (!ok) { alert("Tipo de arquivo não permitido (use imagem ou PDF)."); return false; }
+    if (file.size > MAX) { alert("Arquivo muito grande (máx. 10 MB)."); return false; }
+    return true;
+  };
+
   const handleFileChange = (e) => {
-    const files = Array.from(e.target.files);
+    const files = Array.from(e.target.files || []).filter(arquivoValido);
+    if (files.length === 0) { e.target.value = ""; return; }
     files.forEach(file => {
       const reader = new FileReader();
       reader.onloadend = () => {

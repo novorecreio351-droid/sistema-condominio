@@ -658,8 +658,19 @@ const converterUrlDrive = (url) => {
   // Atalho para usar a função com o state atual de uploads
   const getFotoFesta = (festaId) => getFotoFestaInterno(festaId, uploads);
 
+  const arquivoValido = (file) => {
+    if (!file) return false;
+    const MAX = 10 * 1024 * 1024;
+    const tipo = (file.type || "").toLowerCase();
+    const ok = tipo.startsWith("image/") || tipo === "application/pdf";
+    if (!ok) { alert("Tipo de arquivo não permitido (use imagem ou PDF)."); return false; }
+    if (file.size > MAX) { alert("Arquivo muito grande (máx. 10 MB)."); return false; }
+    return true;
+  };
+
   const handleFileChange = (e, campo) => {
   const file = e.target.files[0];
+  if (!file || !arquivoValido(file)) { e.target.value = ""; return; }
   if (file) {
     const reader = new FileReader();
     reader.onloadend = () => {
