@@ -288,7 +288,11 @@ const imprimir = () => {
   `);
 
   janela.document.close();
-  janela.onload = () => { janela.focus(); janela.print(); };
+  janela.onload = () => {
+    janela.focus();
+    janela.print();
+    janela.onafterprint = () => janela.close();
+  };
 };
 
 const compartilharImagemWhatsApp = async () => {
