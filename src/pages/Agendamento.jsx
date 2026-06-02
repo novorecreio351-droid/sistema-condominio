@@ -738,14 +738,14 @@ export default function Agendamento({ user }) {
                 </div>
                 <div>
                   <label style={{ fontSize: 10, fontWeight: 700, textTransform:"uppercase", color: "#64748b", display:"block", marginBottom: 5 }}>Hora Início</label>
-                  <input
-                    type="time"
+                  <select
                     value={formData.hora_inicio}
-                    min="10:00"
-                    max="17:00"
                     onChange={e => { setFormData(prev => ({ ...prev, hora_inicio: e.target.value })); setConflitError(""); }}
                     style={{ width:"100%", padding: "9px 8px", borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.bg, color: theme.text, fontSize: 13, outline:"none" }}
-                  />
+                  >
+                    <option value="">Selecione...</option>
+                    {HORARIOS.map(h => <option key={h} value={h}>{h}</option>)}
+                  </select>
                 </div>
                 <div>
                   <label style={{ fontSize: 10, fontWeight: 700, textTransform:"uppercase", color: "#64748b", display:"block", marginBottom: 5 }}>Duração</label>
