@@ -77,7 +77,6 @@ const FORM_INICIAL = {
 export default function Agendamento({ user }) {
   const { theme } = useTheme();
   const dropdownRef = useRef(null);
-  const menuRef = useRef(null);
 
   const [agendamentos, setAgendamentos] = useState([]);
   const [unidades, setUnidades]         = useState([]);
@@ -166,20 +165,22 @@ export default function Agendamento({ user }) {
       return agora > horaFim;
     });
 
-    for (const ag of paraAtualizar) {
-      await fetch(API_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({
-          token: TOKEN,
-          action: "edit",
-          sheet: "AGENDAMENTOS",
-          id: ag.id.toString(),
-          data: { ...ag, status: "Realizado" },
-        }),
-      });
-    }
+    await Promise.all(
+      paraAtualizar.map(ag =>
+        fetch(API_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify({
+            token: TOKEN,
+            action: "edit",
+            sheet: "AGENDAMENTOS",
+            id: ag.id.toString(),
+            data: { ...ag, status: "Realizado" },
+          }),
+        })
+      )
+    );
 
     if (paraAtualizar.length > 0) {
       setTimeout(fetchData, 1500);
@@ -341,6 +342,7 @@ export default function Agendamento({ user }) {
       data: {
         tipo:        formData.tipo,
         id_unidade:  formData.tipo === "Morador" ? formData.id_unidade : "",
+        id_morador:  formData.tipo === "Morador" ? (formData.id_morador || "") : "",
         nome:        formData.nome,
         telefone:    formData.telefone,
         data:        formData.data,
