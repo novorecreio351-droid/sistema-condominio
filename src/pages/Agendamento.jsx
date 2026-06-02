@@ -81,6 +81,16 @@ function normalizarHora(valor) {
   return valor.toString().trim();
 }
 
+// Máscara de telefone no formato (dd)nnnnn-nnnn.
+function maskPhone(v) {
+  let d = (v || "").toString().replace(/\D/g, "");
+  if (d.length > 11) d = d.slice(0, 11);
+  if (d.length === 0) return "";
+  if (d.length <= 2) return `(${d}`;
+  if (d.length <= 7) return `(${d.slice(0, 2)})${d.slice(2)}`;
+  return `(${d.slice(0, 2)})${d.slice(2, 7)}-${d.slice(7)}`;
+}
+
 const FORM_INICIAL = {
   tipo: "Morador",
   id_unidade: "",
@@ -287,7 +297,7 @@ export default function Agendamento({ user }) {
         id_unidade: unidadeId,
         id_morador: m.id,
         nome: m.nome || "",
-        telefone: m.telefone || m.celular || "",
+        telefone: maskPhone(m.telefone || m.celular || ""),
       }));
     } else {
       setFormData(prev => ({
@@ -313,7 +323,7 @@ export default function Agendamento({ user }) {
         ...prev,
         id_morador: id,
         nome: m.nome || "",
-        telefone: m.telefone || m.celular || "",
+        telefone: maskPhone(m.telefone || m.celular || ""),
       }));
     }
   };
@@ -421,20 +431,36 @@ export default function Agendamento({ user }) {
     return cells;
   }, [viewMonth]);
 
-  const agendamentosSlot = (hora) =>
-    agendamentosDoDia.filter(ag => ag.hora_inicio === hora);
+  // Linhas da agenda do dia: mescla agendamentos reais (em qualquer horário,
+  // inclusive quebrado) com os slots fixos de hora livres, ordenados por horário.
+  const linhasDoDia = useMemo(() => {
+    const ocupaSlot = (hora) => {
+      const inicioMin = horaParaMinutos(hora);
+      return agendamentosDoDia.some(ag => {
+        if (ag.status === "Cancelado") return false;
+        const ai = horaParaMinutos(ag.hora_inicio);
+        const af = ai + duracaoParaMinutos(ag.duracao);
+        return inicioMin >= ai && inicioMin < af;
+      });
+    };
 
-  const slotLivre = (hora) => {
-    const inicioMin = horaParaMinutos(hora);
-    return !agendamentosDoDia.some(ag => {
-      if (ag.status === "Cancelado") return false;
-      const agInicio = horaParaMinutos(ag.hora_inicio);
-      const agFim    = agInicio + duracaoParaMinutos(ag.duracao);
-      return inicioMin >= agInicio && inicioMin < agFim;
+    const linhas = agendamentosDoDia.map(ag => ({
+      tipo: "ag", hora: ag.hora_inicio, ag,
+    }));
+
+    HORARIOS.forEach(h => {
+      const jaTemAgNaHora = agendamentosDoDia.some(
+        ag => ag.status !== "Cancelado" && ag.hora_inicio === h
+      );
+      if (!ocupaSlot(h) && !jaTemAgNaHora) {
+        linhas.push({ tipo: "livre", hora: h });
+      }
     });
-  };
 
-  const totalDisponiveis = HORARIOS.filter(h => slotLivre(h)).length;
+    return linhas.sort((a, b) => horaParaMinutos(a.hora) - horaParaMinutos(b.hora));
+  }, [agendamentosDoDia]);
+
+  const totalDisponiveis = linhasDoDia.filter(l => l.tipo === "livre").length;
 
   return (
     <div style={{ padding: "20px", maxWidth: "1200px", margin: "0 auto" }}>
@@ -573,60 +599,46 @@ export default function Agendamento({ user }) {
           </div>
 
           <div style={{ display:"flex", flexDirection:"column", gap: 4 }}>
-            {HORARIOS.map(hora => {
-              const ags = agendamentosSlot(hora);
-
-              if (ags.length > 0) {
-                return ags.map(ag => {
-                  const c = STATUS_COLORS[ag.status] || STATUS_COLORS.Agendado;
-                  return (
-                    <div key={ag.id} style={{ display:"flex", gap: 12, alignItems:"flex-start" }}>
-                      <div style={{ width: 44, fontSize: 11, color: theme.textSecondary, textAlign:"right", paddingTop: 12, flexShrink: 0, fontWeight: 600 }}>{hora}</div>
-                      <div
-                        className="ag-card"
-                        onClick={() => abrirModalEditar(ag)}
-                        style={{ flex: 1, background: c.bg, borderLeft: `3px solid ${c.border}`, borderRadius: 10, padding: "10px 14px", minHeight: 44 }}
-                      >
-                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-                          <div>
-                            <div style={{ fontSize: 13, fontWeight: 700, color: theme.text }}>{ag.nome}</div>
-                            <div style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>
-                              {ag.tipo}
-                              {ag.tipo === "Morador" && ag.id_unidade ? ` · Unid. ${ag.id_unidade}` : ""}
-                              {ag.telefone ? ` · ${ag.telefone}` : ""}
-                              {ag.assunto ? ` · ${ag.assunto}` : ""}
-                            </div>
-                            <div style={{ fontSize: 10, marginTop: 2, color: theme.textSecondary }}>
-                              {ag.hora_inicio} – {calcHoraFim(ag.hora_inicio, ag.duracao)} ({ag.duracao})
-                            </div>
+            {linhasDoDia.map((linha, idx) => {
+              if (linha.tipo === "ag") {
+                const ag = linha.ag;
+                const c = STATUS_COLORS[ag.status] || STATUS_COLORS.Agendado;
+                return (
+                  <div key={ag.id} style={{ display:"flex", gap: 12, alignItems:"flex-start" }}>
+                    <div style={{ width: 44, fontSize: 11, color: theme.textSecondary, textAlign:"right", paddingTop: 12, flexShrink: 0, fontWeight: 600 }}>{ag.hora_inicio}</div>
+                    <div
+                      className="ag-card"
+                      onClick={() => abrirModalEditar(ag)}
+                      style={{ flex: 1, background: c.bg, borderLeft: `3px solid ${c.border}`, borderRadius: 10, padding: "10px 14px", minHeight: 44 }}
+                    >
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: theme.text }}>{ag.nome}</div>
+                          <div style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>
+                            {ag.tipo}
+                            {ag.tipo === "Morador" && ag.id_unidade ? ` · Unid. ${ag.id_unidade}` : ""}
+                            {ag.telefone ? ` · ${ag.telefone}` : ""}
+                            {ag.assunto ? ` · ${ag.assunto}` : ""}
                           </div>
-                          <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: c.badge, color: c.border, whiteSpace:"nowrap", marginLeft: 8 }}>
-                            {ag.status}
-                          </span>
+                          <div style={{ fontSize: 10, marginTop: 2, color: theme.textSecondary }}>
+                            {ag.hora_inicio} – {calcHoraFim(ag.hora_inicio, ag.duracao)} ({ag.duracao})
+                          </div>
                         </div>
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: c.badge, color: c.border, whiteSpace:"nowrap", marginLeft: 8 }}>
+                          {ag.status}
+                        </span>
                       </div>
                     </div>
-                  );
-                });
+                  </div>
+                );
               }
 
-              const cobertoAntes = HORARIOS.slice(0, HORARIOS.indexOf(hora)).some(h => {
-                return agendamentosSlot(h).some(ag => {
-                  if (ag.status === "Cancelado") return false;
-                  const agInicio = horaParaMinutos(ag.hora_inicio);
-                  const agFim    = agInicio + duracaoParaMinutos(ag.duracao);
-                  return horaParaMinutos(hora) >= agInicio && horaParaMinutos(hora) < agFim;
-                });
-              });
-
-              if (cobertoAntes) return null;
-
               return (
-                <div key={hora} style={{ display:"flex", gap: 12, alignItems:"center" }}>
-                  <div style={{ width: 44, fontSize: 11, color: theme.textSecondary, textAlign:"right", flexShrink: 0, fontWeight: 600 }}>{hora}</div>
+                <div key={`livre-${linha.hora}`} style={{ display:"flex", gap: 12, alignItems:"center" }}>
+                  <div style={{ width: 44, fontSize: 11, color: theme.textSecondary, textAlign:"right", flexShrink: 0, fontWeight: 600 }}>{linha.hora}</div>
                   <div
                     className="slot-livre"
-                    onClick={() => abrirModalNovo(hora)}
+                    onClick={() => abrirModalNovo(linha.hora)}
                     style={{ flex: 1, minHeight: 44, borderRadius: 10, border: `1px dashed ${theme.border}`, background: "transparent", display:"flex", alignItems:"center", padding: "0 14px", gap: 6 }}
                   >
                     <span className="slot-plus" style={{ fontSize: 18, color: theme.border }}>+</span>
@@ -739,8 +751,8 @@ export default function Agendamento({ user }) {
                   <label style={{ fontSize: 10, fontWeight: 700, textTransform:"uppercase", color: "#64748b", display:"block", marginBottom: 5 }}>Telefone</label>
                   <input
                     value={formData.telefone}
-                    onChange={e => setFormData(prev => ({ ...prev, telefone: e.target.value }))}
-                    placeholder="(11) 99999-0000"
+                    onChange={e => setFormData(prev => ({ ...prev, telefone: maskPhone(e.target.value) }))}
+                    placeholder="(11)99999-0000"
                     style={{ width:"100%", padding: "9px 12px", borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.bg, color: theme.text, fontSize: 13, outline:"none" }}
                   />
                 </div>
@@ -759,14 +771,15 @@ export default function Agendamento({ user }) {
                 </div>
                 <div>
                   <label style={{ fontSize: 10, fontWeight: 700, textTransform:"uppercase", color: "#64748b", display:"block", marginBottom: 5 }}>Hora Início</label>
-                  <select
+                  <input
+                    type="time"
                     value={formData.hora_inicio}
+                    min="10:00"
+                    max="17:00"
+                    step="300"
                     onChange={e => { setFormData(prev => ({ ...prev, hora_inicio: e.target.value })); setConflitError(""); }}
                     style={{ width:"100%", padding: "9px 8px", borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.bg, color: theme.text, fontSize: 13, outline:"none" }}
-                  >
-                    <option value="">Selecione...</option>
-                    {HORARIOS.map(h => <option key={h} value={h}>{h}</option>)}
-                  </select>
+                  />
                 </div>
                 <div>
                   <label style={{ fontSize: 10, fontWeight: 700, textTransform:"uppercase", color: "#64748b", display:"block", marginBottom: 5 }}>Duração</label>
