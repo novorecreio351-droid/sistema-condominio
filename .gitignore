@@ -31,3 +31,7 @@ dist-ssr
 # Diretórios de scratch das ferramentas (planejamento/brainstorm)
 .planning/
 .superpowers/
+
+# Config do clasp (scriptId/manifesto do Apps Script)
+appscript/.clasp.json
+appscript/appsscript.json
