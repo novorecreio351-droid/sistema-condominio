@@ -201,7 +201,7 @@ const canAccess = (label) => {
         {renderItem("Dashboard", LayoutDashboard)}
         {renderItem("Unidades", Building2)}
         {renderItem("Moradores", Users)}
-        {renderItem("Vagas", Car)}  
+        {renderItem("Vagas", Car)}
         {renderItem("Piscina", Waves)}
         {renderItem("Comunicado", Megaphone)}
         {renderItem("Encomendas", ShoppingCart)}
