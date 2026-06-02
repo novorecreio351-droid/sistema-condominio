@@ -32,6 +32,8 @@ dist-ssr
 .planning/
 .superpowers/
 
-# Config do clasp (scriptId/manifesto do Apps Script)
-appscript/.clasp.json
-appscript/appsscript.json
+# Backend Apps Script (gerenciado via clasp, fora do versionamento do front)
+appscript/
+
+# Documentos de planejamento (specs/plans internos)
+docs/superpowers/
