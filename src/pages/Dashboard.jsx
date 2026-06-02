@@ -10,7 +10,8 @@ import {
   ShoppingCart,
   FileText,
   Loader2,
-  Clock
+  Clock,
+  CalendarDays
 } from "lucide-react";
 import { can } from "../auth/permissions"; // Removi o .js
 
@@ -23,6 +24,7 @@ export default function Dashboard({ user }) {
   const [stats, setStats] = useState({ inadimplentes: 0, moradores: 0, reservas: 0 });
   const [upcoming, setUpcoming] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [reunioesProximas, setReunioesProximas] = useState([]);
   const { theme } = useTheme();
 
   const normalizeText = (text) => 
@@ -125,11 +127,102 @@ export default function Dashboard({ user }) {
     if (user?.nome) fetchData();
   }, [user]);
 
+  useEffect(() => {
+    const ROLES_AGENDA = ["Sindico", "Auxiliar Administrativo", "Desenvolvedor"];
+    if (!user?.cargo || !ROLES_AGENDA.includes(user.cargo)) return;
+
+    const API_URL_DASH = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8epZMJIhCmapSOxyTegLMSEGZ2jBMGIxQ4cJb4a23oveAAaW/exec";
+    const TOKEN_DASH   = import.meta.env.VITE_SHEETS_TOKEN;
+
+    const hoje = new Date();
+    const amanha = new Date(hoje);
+    amanha.setDate(amanha.getDate() + 1);
+
+    const fmt = (d) => {
+      const y = d.getFullYear();
+      const m = (d.getMonth()+1).toString().padStart(2,"0");
+      const dd = d.getDate().toString().padStart(2,"0");
+      return `${y}-${m}-${dd}`;
+    };
+
+    const hojeStr   = fmt(hoje);
+    const amanhaStr = fmt(amanha);
+
+    fetch(`${API_URL_DASH}?token=${TOKEN_DASH}&sheet=AGENDAMENTOS`, { redirect: "follow" })
+      .then(r => r.json())
+      .then(data => {
+        const lista = (Array.isArray(data) ? data : [])
+          .map(item => ({
+            id:          item.id          || "",
+            tipo:        item.tipo        || "Morador",
+            nome:        item.nome        || item.NOME        || "",
+            data:        (item.data       || item.DATA        || "").split(" ")[0].split("T")[0],
+            hora_inicio: item.hora_inicio || item.HORA_INICIO || "",
+            assunto:     item.assunto     || item.ASSUNTO     || "",
+            status:      item.status      || item.STATUS      || "",
+            id_unidade:  item.id_unidade  || item.ID_UNIDADE  || "",
+          }))
+          .filter(ag =>
+            (ag.data === hojeStr || ag.data === amanhaStr) &&
+            ag.status !== "Cancelado" && ag.status !== "Realizado"
+          )
+          .sort((a,b) => (a.data + a.hora_inicio).localeCompare(b.data + b.hora_inicio));
+        setReunioesProximas(lista);
+      })
+      .catch(() => {});
+  }, [user]);
+
   return (
   <div style={{ padding: "10px" }}>
     <Header user={user} theme={theme} />
-    
-    <Cards 
+
+    {reunioesProximas.length > 0 && (
+      <div style={{
+        background: theme.mainBg,
+        border: `1px solid ${theme.border}`,
+        borderRadius: 16,
+        padding: "16px 20px",
+        marginBottom: 20
+      }}>
+        <div style={{ display:"flex", alignItems:"center", gap: 8, marginBottom: 12 }}>
+          <CalendarDays size={18} color="#3b82f6" />
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: theme.text }}>Reuniões Próximas</h3>
+        </div>
+        <div style={{ display:"flex", flexDirection:"column", gap: 8 }}>
+          {reunioesProximas.map(ag => {
+            const hoje = new Date();
+            const hojeStr = `${hoje.getFullYear()}-${(hoje.getMonth()+1).toString().padStart(2,"0")}-${hoje.getDate().toString().padStart(2,"0")}`;
+            const isHoje = ag.data === hojeStr;
+            return (
+              <div key={ag.id} style={{
+                display:"flex", alignItems:"center", gap: 12,
+                padding: "10px 14px", borderRadius: 10,
+                background: isHoje ? "#f59e0b15" : "#3b82f610",
+                border: `1px solid ${isHoje ? "#f59e0b40" : "#3b82f640"}`
+              }}>
+                <div style={{
+                  background: isHoje ? "#f59e0b" : "#3b82f6",
+                  color: "white", fontSize: 10, fontWeight: 700,
+                  padding: "3px 8px", borderRadius: 20, whiteSpace:"nowrap"
+                }}>
+                  {isHoje ? "Hoje" : "Amanhã"}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>
+                    {ag.tipo} — {ag.nome}
+                  </span>
+                  <span style={{ fontSize: 12, color: theme.textSecondary, marginLeft: 8 }}>
+                    às {ag.hora_inicio}{ag.assunto ? ` · ${ag.assunto}` : ""}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    )}
+
+    <Cards
       user={user} // Passe o user para o componente Cards
       theme={theme}
       inadimplentes={loading ? "..." : stats.inadimplentes} 
