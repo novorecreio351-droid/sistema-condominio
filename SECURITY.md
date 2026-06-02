@@ -146,12 +146,13 @@ dados (XSS/injeção). Abaixo apenas os achados **novos** que não estavam no re
 
 ## 🔴 CRÍTICO
 
-### N1. Chaves de IA hardcoded ainda presentes no fonte commitado
-`appscript/Código.js:1630-1631` — `GEMINI_KEY` e `GROQ_KEY` têm fallback literal (`AIzaSy...`, `gsk_...`).
-Embora não vão para o bundle do navegador, estão no **fonte commitado** (e no histórico do git).
-- **Impacto:** quem tem acesso ao repo extrai as chaves → uso indevido/cobrança.
-- **Ação:** rotacionar AMBAS, remover os literais de fallback (falhar fechado se a Script Property faltar),
-  e purgar do histórico (BFG / `git filter-repo`). *(Já estava listado como pendente no item 1; reforçado: o literal continua no código.)*
+### N1. Chaves de IA hardcoded ainda presentes no fonte commitado — ✅ RESOLVIDO (2026-06-02, deploy @115)
+`appscript/Código.js` — `GEMINI_KEY`/`GROQ_KEY` tinham fallback literal.
+- **Impacto:** quem tinha acesso ao repo extraía as chaves → uso indevido/cobrança.
+- **Feito:** chaves rotacionadas pelo usuário e definidas em Script Properties (`API_KEY_IA`, `API_KEY_GROQ`);
+  fallback hardcoded **removido** de `handleGerarIA_` (lê só das Properties; falha fechado se ausentes).
+- **Obs:** as chaves ANTIGAS ainda existem no histórico do git, mas já foram revogadas/rotacionadas → inúteis.
+  Optou-se por NÃO reescrever o histórico (decisão do usuário).
 
 ## 🟠 HIGH
 
