@@ -131,9 +131,6 @@ export default function Dashboard({ user }) {
     const ROLES_AGENDA = ["Sindico", "Auxiliar Administrativo", "Desenvolvedor"];
     if (!user?.cargo || !ROLES_AGENDA.includes(user.cargo)) return;
 
-    const API_URL_DASH = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8epZMJIhCmapSOxyTegLMSEGZ2jBMGIxQ4cJb4a23oveAAaW/exec";
-    const TOKEN_DASH   = import.meta.env.VITE_SHEETS_TOKEN;
-
     const hoje = new Date();
     const amanha = new Date(hoje);
     amanha.setDate(amanha.getDate() + 1);
@@ -148,7 +145,7 @@ export default function Dashboard({ user }) {
     const hojeStr   = fmt(hoje);
     const amanhaStr = fmt(amanha);
 
-    fetch(`${API_URL_DASH}?token=${TOKEN_DASH}&sheet=AGENDAMENTOS`, { redirect: "follow" })
+    fetch(`${SHEETS_URL}?token=${TOKEN}&sheet=AGENDAMENTOS`, { redirect: "follow" })
       .then(r => r.json())
       .then(data => {
         const lista = (Array.isArray(data) ? data : [])
