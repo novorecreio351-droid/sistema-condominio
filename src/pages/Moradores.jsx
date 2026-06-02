@@ -9,6 +9,7 @@ import {
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { sessionParam, getSessionToken } from "../auth/session";
 
 const TOKEN = import.meta.env.VITE_SHEETS_TOKEN;
 const SHEETS_URL = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8epZMJIhCmapSOxyTegLMSEGZ2jBMGIxQ4cJb4a23oveAAaW/exec";
@@ -115,9 +116,9 @@ export default function Moradores() {
     
     // Adicionamos as configurações de CORS/Redirect em cada fetch do Promise.all
     const [resMorad, resUnits, resVagas] = await Promise.all([
-      fetch(`${SHEETS_URL}?sheet=MORADORES&token=${TOKEN}`, { method: "GET", redirect: "follow" }),
-      fetch(`${SHEETS_URL}?sheet=UNIDADES&token=${TOKEN}`, { method: "GET", redirect: "follow" }),
-      fetch(`${SHEETS_URL}?sheet=VAGAS&token=${TOKEN}`, { method: "GET", redirect: "follow" })
+      fetch(`${SHEETS_URL}?sheet=MORADORES&token=${TOKEN}${sessionParam()}`, { method: "GET", redirect: "follow" }),
+      fetch(`${SHEETS_URL}?sheet=UNIDADES&token=${TOKEN}${sessionParam()}`, { method: "GET", redirect: "follow" }),
+      fetch(`${SHEETS_URL}?sheet=VAGAS&token=${TOKEN}${sessionParam()}`, { method: "GET", redirect: "follow" })
     ]);
 
     // Processamento dos JSONs
@@ -176,7 +177,7 @@ export default function Moradores() {
       }
     }
 
-    const payload = { ...formData, id: modalType === "add" ? Date.now().toString() : formData.id, token: TOKEN, action: modalType, sheet: "MORADORES", user: currentUser.nome };
+    const payload = { ...formData, id: modalType === "add" ? Date.now().toString() : formData.id, token: TOKEN, action: modalType, sheet: "MORADORES", user: currentUser.nome, session: getSessionToken() };
     setLoadingGlobal(true);
     try {
       await fetch(SHEETS_URL, { method: "POST", body: JSON.stringify(payload) });
@@ -190,7 +191,7 @@ export default function Moradores() {
     if (!confirm("Excluir este morador?")) return;
     setLoadingGlobal(true);
     try {
-      await fetch(SHEETS_URL, { method: "POST", body: JSON.stringify({ token: TOKEN, action: "delete", sheet: "MORADORES", id, user: currentUser.nome }) });
+      await fetch(SHEETS_URL, { method: "POST", body: JSON.stringify({ token: TOKEN, action: "delete", sheet: "MORADORES", id, user: currentUser.nome, session: getSessionToken() }) });
       await fetchData();
     } catch (err) { alert("Erro ao excluir"); }
     finally { setLoadingGlobal(false); }

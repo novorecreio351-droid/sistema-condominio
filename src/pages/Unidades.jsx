@@ -9,6 +9,7 @@ import {
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
+import { sessionParam, getSessionToken } from "../auth/session";
 
 const TOKEN = import.meta.env.VITE_SHEETS_TOKEN;
 const SHEETS_URL = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8epZMJIhCmapSOxyTegLMSEGZ2jBMGIxQ4cJb4a23oveAAaW/exec";
@@ -78,7 +79,7 @@ React.useEffect(() => {
   try {
     setLoadingInitial(true);
     // Adicionamos o objeto de configuração com o redirect e o method
-    const res = await fetch(`${SHEETS_URL}?sheet=UNIDADES&token=${TOKEN}`, {
+    const res = await fetch(`${SHEETS_URL}?sheet=UNIDADES&token=${TOKEN}${sessionParam()}`, {
       method: "GET",
       redirect: "follow" // CRUCIAL para evitar erro de CORS no Google Apps Script
     });
@@ -159,8 +160,9 @@ React.useEffect(() => {
       bloco: formData.bloco, 
       unidade: formData.unidade, 
       ocupado: formData.ocupado,
-      status: formData.status, 
-      valor: formData.status === "Inadimplente" ? (parseFloat(valorLimpo) || 0) : 0 
+      status: formData.status,
+      valor: formData.status === "Inadimplente" ? (parseFloat(valorLimpo) || 0) : 0,
+      session: getSessionToken()
     };
 
     setLoadingGlobal(true);
@@ -184,7 +186,7 @@ React.useEffect(() => {
     try {
       await fetch(SHEETS_URL, { 
         method: "POST", 
-        body: JSON.stringify({ token: TOKEN, action: "delete", id: id, user: currentUser.nome }),
+        body: JSON.stringify({ token: TOKEN, action: "delete", id: id, user: currentUser.nome, session: getSessionToken() }),
         redirect: "follow"
       });
       await fetchUnidades();

@@ -7,6 +7,7 @@ import {
   FileText, Download, CheckSquare, Square, RotateCcw  // Importados para o estilo Moradores
 } from "lucide-react";
 import { useTheme } from "../App";
+import { sessionParam, getSessionToken } from "../auth/session";
 
 // Bibliotecas para exportação
 import { jsPDF } from "jspdf";
@@ -94,19 +95,19 @@ export default function Vagas({ user }) {
   try {
     setLoadingInitial(true);
     const [resVagas, resUnidades, resTags] = await Promise.all([
-      fetch(`${API_URL}?token=${TOKEN}&sheet=VAGAS`, { 
-        method: "GET", 
-        redirect: "follow" 
+      fetch(`${API_URL}?token=${TOKEN}&sheet=VAGAS${sessionParam()}`, {
+        method: "GET",
+        redirect: "follow"
       }).then(r => r.json()),
-      
-      fetch(`${API_URL}?token=${TOKEN}&sheet=UNIDADES`, { 
-        method: "GET", 
-        redirect: "follow" 
+
+      fetch(`${API_URL}?token=${TOKEN}&sheet=UNIDADES${sessionParam()}`, {
+        method: "GET",
+        redirect: "follow"
       }).then(r => r.json()),
-      
-      fetch(`${API_URL}?token=${TOKEN}&sheet=TAGS`, { 
-        method: "GET", 
-        redirect: "follow" 
+
+      fetch(`${API_URL}?token=${TOKEN}&sheet=TAGS${sessionParam()}`, {
+        method: "GET",
+        redirect: "follow"
       }).then(r => r.json())
     ]);
 
@@ -263,8 +264,9 @@ const btnWhite = {
           sheet: "VAGAS", 
           id: (modalType === "add" ? Date.now().toString() : formData.id.toString()), 
           // AQUI ESTÁ O SEGREDO: Garante que envia o nome do usuário logado
-          user: user?.nome || "Usuário Desconhecido", 
-          ...formData 
+          user: user?.nome || "Usuário Desconhecido",
+          session: getSessionToken(),
+          ...formData
         }),
       });
       setShowModal(false);
@@ -311,7 +313,8 @@ const btnWhite = {
         veiculo: tagFormData.veiculo,
         status: tagFormData.status,
 
-        user: user?.nome || "Usuário Desconhecido"
+        user: user?.nome || "Usuário Desconhecido",
+        session: getSessionToken()
       })
     });
 
@@ -336,7 +339,8 @@ const btnWhite = {
         action: "delete", 
         sheet: sheetName, 
         id: id.toString(),
-        user: user?.nome || "Sistema" // Adicionado para manter o log
+        user: user?.nome || "Sistema", // Adicionado para manter o log
+        session: getSessionToken()
       })
     });
 

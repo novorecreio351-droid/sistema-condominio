@@ -14,6 +14,7 @@ import {
   CalendarDays
 } from "lucide-react";
 import { can } from "../auth/permissions"; // Removi o .js
+import { sessionParam, getSessionToken } from "../auth/session";
 
 const TOKEN = import.meta.env.VITE_SHEETS_TOKEN;
 const SHEETS_URL = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8epZMJIhCmapSOxyTegLMSEGZ2jBMGIxQ4cJb4a23oveAAaW/exec";
@@ -80,11 +81,11 @@ export default function Dashboard({ user }) {
       try {
         setLoading(true);
         const [resUnits, resLogs, resFestas, resChurras, resMudancas] = await Promise.all([
-  fetch(`${SHEETS_URL}?token=${TOKEN}&sheet=UNIDADES`, { method: "GET", redirect: "follow" }),
-  fetch(`${SHEETS_URL}?token=${TOKEN}&sheet=log`, { method: "GET", redirect: "follow" }),
-  fetch(`${SHEETS_URL}?token=${TOKEN}&sheet=FESTAS`, { method: "GET", redirect: "follow" }),
-  fetch(`${SHEETS_URL}?token=${TOKEN}&sheet=CHURRASQUEIRA`, { method: "GET", redirect: "follow" }),
-  fetch(`${SHEETS_URL}?token=${TOKEN}&sheet=MUDANCAS`, { method: "GET", redirect: "follow" })
+  fetch(`${SHEETS_URL}?token=${TOKEN}&sheet=UNIDADES${sessionParam()}`, { method: "GET", redirect: "follow" }),
+  fetch(`${SHEETS_URL}?token=${TOKEN}&sheet=log${sessionParam()}`, { method: "GET", redirect: "follow" }),
+  fetch(`${SHEETS_URL}?token=${TOKEN}&sheet=FESTAS${sessionParam()}`, { method: "GET", redirect: "follow" }),
+  fetch(`${SHEETS_URL}?token=${TOKEN}&sheet=CHURRASQUEIRA${sessionParam()}`, { method: "GET", redirect: "follow" }),
+  fetch(`${SHEETS_URL}?token=${TOKEN}&sheet=MUDANCAS${sessionParam()}`, { method: "GET", redirect: "follow" })
 ]);
 
         const dataUnits = await resUnits.json();
@@ -164,7 +165,7 @@ export default function Dashboard({ user }) {
     const hojeStr   = fmt(hoje);
     const amanhaStr = fmt(amanha);
 
-    fetch(`${SHEETS_URL}?token=${TOKEN}&sheet=AGENDAMENTOS`, { redirect: "follow" })
+    fetch(`${SHEETS_URL}?token=${TOKEN}&sheet=AGENDAMENTOS${sessionParam()}`, { redirect: "follow" })
       .then(r => r.json())
       .then(data => {
         const lista = (Array.isArray(data) ? data : [])
