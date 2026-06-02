@@ -710,6 +710,12 @@ const [selectedColumns, setSelectedColumns] = useState([
   { id: 'status', label: 'Status', selected: true }
 ]);
 
+const sanitizarCelula = (v) => {
+  if (v == null) return v;
+  const s = v.toString();
+  return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+};
+
 const exportToExcel = () => {
   // 1. Filtra apenas as colunas que estão marcadas como 'selected: true' no modal
   const colsAtivas = selectedColumns.filter(c => c.selected);
@@ -723,21 +729,21 @@ const exportToExcel = () => {
     colsAtivas.forEach(col => {
       if (col.id === 'unidade_id') {
         const unit = unidades.find(u => u.id?.toString() === f.unidade_id?.toString());
-        linha["Unidade"] = unit ? `B${unit.bloco} - ${unit.unidade}` : f.unidade_id;
-      } 
+        linha["Unidade"] = sanitizarCelula(unit ? `B${unit.bloco} - ${unit.unidade}` : f.unidade_id);
+      }
       else if (col.id === 'cpf') {
         linha["CPF"] = maskCPFPrivacy(f.cpf);
-      } 
+      }
       else if (col.id === 'rg') {
   linha["RG"] = maskRGPrivacy(f.rg);
 }
 
 else if (col.id === 'churrasqueira') {
-        linha["Churrasqueira"] = f.churrasqueira || "";
+        linha["Churrasqueira"] = sanitizarCelula(f.churrasqueira || "");
       }
 
       else if (col.id === 'morador') {
-        linha["Responsável"] = f.morador;
+        linha["Responsável"] = sanitizarCelula(f.morador);
       }
       else if (col.id === 'data_reserva') {
         linha["Data da Reserva"] = f.data_reserva?.split(' ')[0];
@@ -748,7 +754,7 @@ else if (col.id === 'churrasqueira') {
       else {
         // Para as demais colunas (contato, pago, status, etc)
         // Usa o label que você definiu no estado selectedColumns
-        linha[col.label] = f[col.id] || "";
+        linha[col.label] = sanitizarCelula(f[col.id] || "");
       }
     });
 
@@ -797,13 +803,13 @@ const exportToPDF = () => {
     // 3. Tratamento para UNIDADE (Para mostrar B1 - 101 em vez do ID)
     if(c.id === 'unidade_id') {
       const unit = unidades.find(u => u.id?.toString() === f.unidade_id?.toString());
-      return unit ? `B${unit.bloco} - ${unit.unidade}` : f.unidade_id;
+      return sanitizarCelula(unit ? `B${unit.bloco} - ${unit.unidade}` : f.unidade_id);
     }
 
     // 4. Tratamento para DATA
     if(c.id === 'data_reserva') return f[c.id]?.split(' ')[0] || "";
 
-    return f[c.id] || "";
+    return sanitizarCelula(f[c.id] || "");
     
   }));
 

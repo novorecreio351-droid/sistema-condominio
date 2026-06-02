@@ -125,16 +125,22 @@ export default function Vagas({ user }) {
 
   // --- FUNÇÕES DE EXPORTAÇÃO ---
 
+  const sanitizarCelula = (v) => {
+    if (v == null) return v;
+    const s = v.toString();
+    return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+  };
+
   const exportToExcel = () => {
     const dataToExport = dadosFiltrados.map(v => {
       const unit = unidades.find(u => u.id?.toString() === v.id_unidade?.toString());
       const tag = tags.find(t => t.id_unidade?.toString() === v.id_unidade?.toString());
       return {
-        Unidade: unit ? `B${unit.bloco} - ${unit.unidade}` : v.id_unidade,
-        Carro: v.possui_carro === "Sim" ? `${v.modelo_carro} (${v.placa_carro})` : "Não possui",
-        Moto: v.possui_moto === "Sim" ? `${v.modelo_moto} (${v.placa_moto})` : "Não possui",
+        Unidade: sanitizarCelula(unit ? `B${unit.bloco} - ${unit.unidade}` : v.id_unidade),
+        Carro: sanitizarCelula(v.possui_carro === "Sim" ? `${v.modelo_carro} (${v.placa_carro})` : "Não possui"),
+        Moto: sanitizarCelula(v.possui_moto === "Sim" ? `${v.modelo_moto} (${v.placa_moto})` : "Não possui"),
         Tag: tag ? tag.status : "Sem Tag",
-        Observacoes: v.observacoes || ""
+        Observacoes: sanitizarCelula(v.observacoes || "")
       };
     });
     const ws = XLSX.utils.json_to_sheet(dataToExport);
@@ -159,7 +165,7 @@ export default function Vagas({ user }) {
       const unit = unidades.find(u => u.id?.toString() === v.id_unidade?.toString());
       const tag = tags.find(t => t.id_unidade?.toString() === v.id_unidade?.toString());
       
-      if (selectedCols.includes("unidade")) row.push(unit ? `B${unit.bloco} - ${unit.unidade}` : v.id_unidade);
+      if (selectedCols.includes("unidade")) row.push(sanitizarCelula(unit ? `B${unit.bloco} - ${unit.unidade}` : v.id_unidade));
       if (selectedCols.includes("veiculos")) {
         let types = [];
         if (v.possui_carro === "Sim") types.push("Carro");
@@ -170,10 +176,10 @@ export default function Vagas({ user }) {
         let details = [];
         if (v.possui_carro === "Sim") details.push(`${v.modelo_carro} (${v.placa_carro})`);
         if (v.possui_moto === "Sim") details.push(`${v.modelo_moto} (${v.placa_moto})`);
-        row.push(details.join("\n"));
+        row.push(sanitizarCelula(details.join("\n")));
       }
       if (selectedCols.includes("tag")) row.push(tag ? tag.status : "Sem Tag");
-      if (selectedCols.includes("obs")) row.push(v.observacoes || "-");
+      if (selectedCols.includes("obs")) row.push(sanitizarCelula(v.observacoes || "-"));
       tableRows.push(row);
     });
 

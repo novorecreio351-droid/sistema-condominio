@@ -196,19 +196,25 @@ export default function Moradores() {
     finally { setLoadingGlobal(false); }
   };
 
+  const sanitizarCelula = (v) => {
+    if (v == null) return v;
+    const s = v.toString();
+    return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+  };
+
   const exportToExcel = () => {
   // Mapeia os dados para o formato amigável
   const dadosFormatados = moradores.map(m => {
     const u = unidadesExistentes.find(unit => String(unit.id) === String(m.id_unidade));
     return {
-      "Unidade": u ? `B${u.bloco}-${u.unidade}` : m.id_unidade,
-      "Nome": m.nome,
-      "CPF": m.cpf,
-      "RG": m.rg || "",
-      "Vínculo": m.tipo_vinculo,
-      "Morador": m.tipo_morador || "Titular",
-      "Telefone": m.telefone,
-      "E-mail": m.email,
+      "Unidade": sanitizarCelula(u ? `B${u.bloco}-${u.unidade}` : m.id_unidade),
+      "Nome": sanitizarCelula(m.nome),
+      "CPF": sanitizarCelula(m.cpf),
+      "RG": sanitizarCelula(m.rg || ""),
+      "Vínculo": sanitizarCelula(m.tipo_vinculo),
+      "Morador": sanitizarCelula(m.tipo_morador || "Titular"),
+      "Telefone": sanitizarCelula(m.telefone),
+      "E-mail": sanitizarCelula(m.email),
       "Status": m.status,
       "Data Entrada": m.data_entrada ? new Date(m.data_entrada).toLocaleDateString('pt-BR') : ""
     };
@@ -234,11 +240,11 @@ export default function Moradores() {
     const body = dadosFiltrados.map(m => colsParaExportar.map(c => {
         if(c.id === 'id_unidade') {
             const u = unidadesExistentes.find(unit => String(unit.id) === String(m.id_unidade));
-            return u ? `B${u.bloco}-${u.unidade}` : m.id_unidade;
+            return sanitizarCelula(u ? `B${u.bloco}-${u.unidade}` : m.id_unidade);
         }
 
-        if(c.id === 'tipo_morador') return m.tipo_morador || "Titular";
-        return m[c.id] || "";
+        if(c.id === 'tipo_morador') return sanitizarCelula(m.tipo_morador || "Titular");
+        return sanitizarCelula(m[c.id] || "");
     }));
 
     const gerarPDF = (incluirLogo = false) => {

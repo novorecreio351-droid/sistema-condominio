@@ -294,6 +294,12 @@ const [selectedColumns, setSelectedColumns] = useState([
 
 
 
+const sanitizarCelula = (v) => {
+  if (v == null) return v;
+  const s = v.toString();
+  return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+};
+
 const exportToExcel = () => {
   const colsAtivas = selectedColumns.filter(c => c.selected);
 
@@ -303,8 +309,8 @@ const exportToExcel = () => {
 
     colsAtivas.forEach(col => {
       if (col.id === 'id_unidade') {
-        linha["Unidade"] = unit ? `B${unit.bloco} - ${unit.unidade}` : f.id_unidade;
-      } 
+        linha["Unidade"] = sanitizarCelula(unit ? `B${unit.bloco} - ${unit.unidade}` : f.id_unidade);
+      }
       else if (col.id === 'cpf') {
         linha["CPF"] = maskCPFPrivacy(f.cpf);
       } 
@@ -316,7 +322,7 @@ const exportToExcel = () => {
         linha["Data"] = data?.includes('-') ? data.split('-').reverse().join('/') : data;
       }
       else {
-        linha[col.label] = f[col.id] || "";
+        linha[col.label] = sanitizarCelula(f[col.id] || "");
       }
     });
     return linha;
@@ -359,13 +365,13 @@ const exportToPDF = () => {
     // 3. Tratamento para UNIDADE (Para mostrar B1 - 101 em vez do ID)
     if(c.id === 'id_unidade') {
       const unit = unidades.find(u => u.id?.toString() === f.id_unidade?.toString());
-      return unit ? `B${unit.bloco} - ${unit.unidade}` : f.id_unidade;
+      return sanitizarCelula(unit ? `B${unit.bloco} - ${unit.unidade}` : f.id_unidade);
     }
 
     // 4. Tratamento para DATA
     if(c.id === 'data_mudanca') return f[c.id]?.replace('T', ' ') || "";
 
-    return f[c.id] || "";
+    return sanitizarCelula(f[c.id] || "");
   }));
 
   const gerarPDF = (incluirLogo = false) => {

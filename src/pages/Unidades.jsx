@@ -191,6 +191,12 @@ React.useEffect(() => {
     } catch (err) { alert("Erro ao excluir"); } finally { setLoadingGlobal(false); }
   };
 
+  const sanitizarCelula = (v) => {
+    if (v == null) return v;
+    const s = v.toString();
+    return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+  };
+
   const handleExportPDF = () => {
     const doc = new jsPDF();
     const img = new Image(); 
@@ -200,7 +206,7 @@ React.useEffect(() => {
       const colunasAtivas = exportColumns.filter(col => col.selected);
       const headers = [colunasAtivas.map(col => col.label)];
       const body = dadosFiltradosEOrdenados.map(u => 
-        colunasAtivas.map(col => col.id === 'valor' ? formatarMoeda(u.valor) : u[col.id])
+        colunasAtivas.map(col => col.id === 'valor' ? formatarMoeda(u.valor) : sanitizarCelula(u[col.id]))
       );
 
       doc.setDrawColor(34, 197, 94); doc.setLineWidth(2); doc.rect(5, 5, 200, 287);
@@ -221,7 +227,7 @@ React.useEffect(() => {
   };
 
   const exportToExcel = () => {
-    const wsData = [['Bloco', 'Unidade', 'Ocupado', 'Status', 'Dívida'], ...dadosFiltradosEOrdenados.map(u => [u.bloco, u.unidade, u.ocupado, u.status, u.valor])];
+    const wsData = [['Bloco', 'Unidade', 'Ocupado', 'Status', 'Dívida'], ...dadosFiltradosEOrdenados.map(u => [sanitizarCelula(u.bloco), sanitizarCelula(u.unidade), sanitizarCelula(u.ocupado), sanitizarCelula(u.status), u.valor])];
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Unidades");

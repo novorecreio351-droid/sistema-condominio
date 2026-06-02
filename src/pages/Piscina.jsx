@@ -18,6 +18,57 @@ import * as htmlToImage from "html-to-image";
 const API_URL = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8epZMJIhCmapSOxyTegLMSEGZ2jBMGIxQ4cJb4a23oveAAaW/exec";
 const TOKEN = import.meta.env.VITE_SHEETS_TOKEN;
 
+// Exibe uma imagem do Google Drive buscando os bytes pelo backend (action=getFoto),
+// sem depender de URLs públicas/thumbnail do Drive (que o navegador bloqueia em <img>).
+const PIXEL_TRANSPARENTE = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+function extrairFileIdDrive(source) {
+  if (!source) return "";
+  const s = source.toString();
+  if (s.startsWith("data:")) return "";
+  if (s.includes("id=")) return s.split("id=")[1].split("&")[0];
+  const m = s.match(/\/d\/([\w-]+)/);
+  if (m) return m[1];
+  if (s.includes("http")) { const m2 = s.match(/[-\w]{25,}/); return m2 ? m2[0] : ""; }
+  return s; // já é um id simples
+}
+// Cache em nível de módulo (compartilhado por todas as instâncias de DriveImage):
+// uma vez baixada, a foto fica em memória — reabrir modal/re-render é instantâneo.
+// Guarda Promises para deduplicar buscas simultâneas do mesmo arquivo.
+const fotoCache = new Map();
+function fetchFotoCached(fileId) {
+  if (!fileId) return Promise.resolve("");
+  if (fotoCache.has(fileId)) return fotoCache.get(fileId);
+  const p = fetch(`${API_URL}?token=${TOKEN}&action=getFoto&fileId=${encodeURIComponent(fileId)}`)
+    .then((r) => r.json())
+    .then((d) => (d && d.success && d.base64 ? `data:${d.contentType || "image/jpeg"};base64,${d.base64}` : ""))
+    .catch(() => "");
+  // Se falhar/voltar vazio, descarta do cache para permitir nova tentativa depois.
+  p.then((src) => { if (!src) fotoCache.delete(fileId); });
+  fotoCache.set(fileId, p);
+  return p;
+}
+// Inicia o download de uma foto antecipadamente (ao passar o mouse / tocar no item),
+// para que já esteja em cache quando o modal abrir.
+function prefetchFoto(source) {
+  const fileId = source && source.toString().startsWith("data:") ? "" : extrairFileIdDrive(source);
+  if (fileId) fetchFotoCached(fileId);
+}
+function DriveImage({ source, localSrc, alt = "", style }) {
+  // src imediato (sem estado): preview local em base64 ou um data: URL já pronto.
+  const directSrc = localSrc || (source && source.toString().startsWith("data:") ? source.toString() : "");
+  const fileId = directSrc ? "" : extrairFileIdDrive(source);
+  // Se a foto já está em cache resolvido, mostra na hora (sem flash de placeholder).
+  const cached = fileId && fotoCache.has(fileId) ? fotoCache.get(fileId) : null;
+  const [fetchedSrc, setFetchedSrc] = useState(typeof cached === "string" ? cached : "");
+  useEffect(() => {
+    if (!fileId) return; // nada a buscar; o directSrc/placeholder cuida da exibição
+    let cancelled = false;
+    fetchFotoCached(fileId).then((src) => { if (!cancelled) setFetchedSrc(src); });
+    return () => { cancelled = true; };
+  }, [fileId]);
+  return <img src={directSrc || fetchedSrc || PIXEL_TRANSPARENTE} alt={alt} style={style} />;
+}
+
 // --- ESTILOS ---
 const btnWhite = { border: '1px solid', padding: '10px 16px', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' };
 const pageContainer = { padding: "20px", maxWidth: "1200px", margin: "0 auto" };
@@ -442,6 +493,12 @@ const [selectedColumns, setSelectedColumns] = useState([
   { id: 'status', label: 'Status', selected: true }
 ]);
 
+const sanitizarCelula = (v) => {
+  if (v == null) return v;
+  const s = v.toString();
+  return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+};
+
 const exportToExcel = () => {
   // 1. Filtra apenas as colunas marcadas como 'selected: true'
   const colsAtivas = selectedColumns.filter(c => c.selected);
@@ -454,12 +511,12 @@ const exportToExcel = () => {
       if (col.id === 'id_unidade') {
         // Pega o label "BLOCO 5 - UNIDADE 206" e transforma em "B5-206"
         const labelCompleto = getUnitLabel(f.id_unidade);
-        linha["Unidade"] = labelCompleto
+        linha["Unidade"] = sanitizarCelula(labelCompleto
           .replace(/BLOCO\s*/gi, 'B')      // Troca BLOCO por B
           .replace(/UNIDADE\s*/gi, '')    // Remove a palavra UNIDADE
           .replace(/\s*-\s*/g, '-')       // Garante que o traço não tenha espaços
-          .trim();
-      } 
+          .trim());
+      }
       else if (col.id === 'cpf') {
         linha["CPF"] = maskCPFPrivacy(f.cpf);
       } 
@@ -474,7 +531,7 @@ const exportToExcel = () => {
         linha[col.label] = valorData;
       }
       else {
-        linha[col.label] = f[col.id] || "";
+        linha[col.label] = sanitizarCelula(f[col.id] || "");
       }
     });
 
@@ -512,11 +569,11 @@ const exportToPDF = () => {
     // Se o seu ID for 'id_unidade' ou 'unidade_id', ajuste aqui:
     if(c.id === 'id_unidade' || c.id === 'unidade_id') {
       const labelCompleto = getUnitLabel(f.id_unidade || f.unidade_id);
-      return labelCompleto
+      return sanitizarCelula(labelCompleto
         .replace(/BLOCO\s*/gi, 'B')      // Troca BLOCO por B
         .replace(/UNIDADE\s*/gi, '')    // Remove a palavra UNIDADE
         .replace(/\s*-\s*/g, '-')       // Remove espaços no traço
-        .trim();
+        .trim());
     }
 
     // 2. Tratamento para CPF (Máscara)
@@ -531,7 +588,7 @@ const exportToPDF = () => {
       return valorData.toString().split(' ')[0];
     }
 
-    return f[c.id] || "";
+    return sanitizarCelula(f[c.id] || "");
   }));
 
   const gerarPDF = (incluirLogo = false) => {
@@ -1257,20 +1314,15 @@ const handleSort = (key) => {
 <td style={{ ...tdStyle, color: theme.text }}>
   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
     {f.url_foto ? (
-      <img 
-        // AQUI ESTÁ A MUDANÇA: Chamando a função de conversão
-        src={converterLinkDrive(f.url_foto)} 
-        alt="Perfil" 
-        style={{ 
-          width: '32px', 
-          height: '32px', 
-          borderRadius: '50%', 
-          objectFit: 'cover', 
-          border: `1px solid ${theme.border}` 
-        }} 
-        onError={(e) => {
-          // Se falhar, substitui por um ícone de erro ou placeholder
-          e.target.style.display = 'none';
+      <DriveImage
+        source={f.url_foto}
+        alt="Perfil"
+        style={{
+          width: '32px',
+          height: '32px',
+          borderRadius: '50%',
+          objectFit: 'cover',
+          border: `1px solid ${theme.border}`
         }}
       />
     ) : (
@@ -1333,11 +1385,13 @@ const handleSort = (key) => {
             
             {/* Container do Olho + Asterisco */}
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <Eye 
-                size={18} 
-                color="#3b82f6" 
-                style={{ cursor: 'pointer' }} 
-                onClick={() => { setSelectedFesta(f); setShowViewModal(true); }} 
+              <Eye
+                size={18}
+                color="#3b82f6"
+                style={{ cursor: 'pointer' }}
+                onMouseEnter={() => { prefetchFoto(f.url_foto); }}
+                onTouchStart={() => { prefetchFoto(f.url_foto); }}
+                onClick={() => { setSelectedFesta(f); setShowViewModal(true); }}
               />
               
               {/* Asterisco */}
@@ -1696,10 +1750,11 @@ const handleSort = (key) => {
     }}>
       {/* SE houver foto (Base64 ou URL), mostra a imagem */}
       {(formData.fotoBase64 || formData.url_foto) ? (
-        <img 
-          src={formData.fotoBase64 || formData.url_foto} 
-          alt="Perfil" 
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+        <DriveImage
+          localSrc={formData.fotoBase64}
+          source={formData.url_foto}
+          alt="Perfil"
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />
       ) : (
         /* CASO CONTRÁRIO, mostra o círculo vazio com um ícone de usuário padrão */
@@ -1814,14 +1869,11 @@ const handleSort = (key) => {
 <div style={{display:'flex', gap:'12px', alignItems:'center'}}>
   <div style={{width:72, height:72, borderRadius:10, overflow:'hidden', border:`1px solid ${theme.border}`, display:'flex', alignItems:'center', justifyContent:'center', background: theme.bg}}>
     {selectedFesta.fotoBase64 || selectedFesta.url_foto ? (
-      <img 
-        // USANDO A FUNÇÃO QUE VOCÊ CONFIRMOU QUE FUNCIONA:
-        src={selectedFesta.fotoBase64 || converterLinkDrive(selectedFesta.url_foto)} 
-        alt="Foto" 
-        style={{width:'100%', height:'100%', objectFit:'cover'}} 
-        onError={(e) => {
-          e.target.style.display = 'none';
-        }}
+      <DriveImage
+        localSrc={selectedFesta.fotoBase64}
+        source={selectedFesta.url_foto}
+        alt="Foto"
+        style={{width:'100%', height:'100%', objectFit:'cover'}}
       />
     ) : (
       <User size={34} color={theme.textSecondary} />
@@ -1968,15 +2020,15 @@ const handleSort = (key) => {
     overflow: 'hidden' 
   }}>
     {selectedFesta.url_foto ? (
-      <img 
-        src={converterLinkDrive(selectedFesta.url_foto)} 
-        alt="Foto Morador" 
-        style={{ 
-          width: '100%', 
-          height: '100%', 
+      <DriveImage
+        source={selectedFesta.url_foto}
+        alt="Foto Morador"
+        style={{
+          width: '100%',
+          height: '100%',
           objectFit: 'cover',
           objectPosition: 'center top'
-        }} 
+        }}
       />
     ) : (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: '#f0f0f0' }}>
