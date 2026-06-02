@@ -214,7 +214,7 @@ Handlers em Encomendas/Festas/Churrasqueira/Piscina/Compras/Mudancas confiam só
 - **N13.** `console.log` com PII em `Moradores.jsx:323` (lista de vagas/moradores) e outros — remover do build de produção.
 - **N14.** Vazamento de detalhe de erro ao cliente: `getFoto` (`err.toString()`, linha 51) e `errRow.toString()` (504/549). Retornar mensagem genérica; logar detalhe só no servidor.
 - **N15.** Login GET ainda aceito (`Código.js:28-31`) coloca senha na URL/logs. Remover o ramo GET (POST já existe).
-- **N16.** Login aceita senha em texto puro como fallback (`Código.js:1543`) — finalizar migração de hash e limpar a coluna `senha` (já listado nos passos manuais).
+- **N16.** ✅ RESOLVIDO (deploy @117) — migração de hash concluída pelo usuário, coluna `senha` apagada, e o fallback de texto puro removido do `handleLogin_`. Login agora exige `senha_hash`.
 
 ## ✅ Pontos positivos confirmados nesta auditoria
 - Nenhum `dangerouslySetInnerHTML`, `eval` ou `new Function` em `src/pages`.
