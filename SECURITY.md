@@ -225,8 +225,17 @@ Handlers em Encomendas/Festas/Churrasqueira/Piscina/Compras/Mudancas confiam só
 - `.env.local` corretamente ignorado e não rastreado.
 
 ## Prioridade de correção
-1. **Rotacionar chaves de IA + remover fallback** (N1) — exposição ativa de credencial.
-2. **Autorização server-side por cargo + sessão assinada** (N5 + item 2.5) — destrava a raiz: hoje todo gating é cosmético.
-3. **`getFoto` IDOR + allow-list de abas** (N2, N3) — leitura arbitrária de Drive/planilhas.
-4. **XSS de impressão do Comunicado** (N4).
-5. **Quick-wins frontend** (N8, N9, N11, N12, N13, N6-export) — baixo esforço, bom retorno.
+1. ✅ **Rotacionar chaves de IA + remover fallback** (N1) — FEITO (deploy @115).
+2. 🟡 **Autorização server-side por cargo + sessão assinada** (N5) — CÓDIGO IMPLEMENTADO (Fase 2, deploy @116),
+   **pendente ligar o flag** `ENFORCE_SESSION=true` após definir `SESSION_SECRET` e deployar o frontend. Ver abaixo.
+3. ✅ **`getFoto` IDOR + allow-list de abas** (N2, N3) — FEITO (deploy @113).
+4. ✅ **XSS de impressão do Comunicado** (N4) — FEITO.
+5. ✅ **Quick-wins frontend** (N8, N9, N11, N12, N13, N6-export) — FEITO.
+
+## Fase 2 — sessão + autorização por cargo (rollout pendente do usuário)
+Código pronto e deployado (backend @116, gated por `ENFORCE_SESSION`). Para ativar:
+1. Apps Script → Propriedades do script → `SESSION_SECRET` = string aleatória longa; `ENFORCE_SESSION` = `false`.
+2. Rebuild + deploy do frontend na Vercel (todas as páginas já enviam a sessão).
+3. Testar: login retorna sessão (DevTools → sessionStorage.sessionToken preenchido); app funciona.
+4. Flipar `ENFORCE_SESSION` = `true`. Rollback = `false` (sem deploy).
+5. Aceite: Porteiro grava só Encomendas; editar `cargo` no sessionStorage não escala (cargo vem da planilha); sessão adulterada/expirada é recusada.
