@@ -98,13 +98,6 @@ const fullScreenLoaderOverlay = { position: 'fixed', top: 0, left: 0, width: '10
 export default function Piscina({ user }) {
   const { theme } = useTheme();
 
-  const abrirUrlSegura = (url) => {
-    if (!url) return;
-    const s = url.toString().trim();
-    if (!/^https?:\/\//i.test(s)) { alert("Link inválido ou não seguro."); return; }
-    window.open(s, "_blank", "noopener,noreferrer");
-  };
-
   const [isDownloading, setIsDownloading] = useState(false); // Sugestão: estado para o loader do botão
   const [loading, setLoading] = useState(false);
   const [festas, setFestas] = useState([]);
