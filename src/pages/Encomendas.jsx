@@ -820,22 +820,39 @@ export default function Encomendas({ user }) {
   };
 
   // Verdadeiro se a encomenda está Pendente há mais de 7 dias corridos (deve ir ao Armazém).
+  // O backend devolve datas como "DD/MM/YYYY HH:mm" (formato BR). new Date() do JS
+  // interpretaria isso como MM/DD (americano) e trocaria dia/mês. Este parser trata
+  // DD/MM/YYYY [HH:mm] corretamente e cai para new Date() em outros formatos (ISO).
+  const parseDataBR = (raw) => {
+    if (!raw) return null;
+    const s = raw.toString().trim();
+    const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2}))?/);
+    if (m) {
+      const [, d, mo, y, h, mi] = m;
+      return new Date(Number(y), Number(mo) - 1, Number(d), Number(h || 0), Number(mi || 0));
+    }
+    const dt = new Date(s);
+    return Number.isNaN(dt.getTime()) ? null : dt;
+  };
+
   const isAtrasadoArmazenar = (item) => {
     const status = (getCell(item, "STATUS") || getCell(item, "status") || "").toString();
     if (status !== "Pendente") return false;
     const dataRaw = getCell(item, "DATA_ENTRADA") || getCell(item, "data_entrada")
       || getCell(item, "DATA_RECEBIMENTO") || getCell(item, "data_recebimento");
-    if (!dataRaw) return false;
-    const dataEntrada = new Date(dataRaw);
-    if (Number.isNaN(dataEntrada.getTime())) return false;
-    const diffDias = (Date.now() - dataEntrada.getTime()) / (1000 * 60 * 60 * 24);
-    return diffDias > 7;
+    const dataEntrada = parseDataBR(dataRaw);
+    if (!dataEntrada) return false;
+    // Compara só a data (zera horas): entrada + 7 dias. Ex: entrou 02/06 → alerta a partir de 09/06.
+    const d0 = new Date(dataEntrada.getFullYear(), dataEntrada.getMonth(), dataEntrada.getDate());
+    const hoje = new Date();
+    const h0 = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    const diffDias = Math.floor((h0.getTime() - d0.getTime()) / (1000 * 60 * 60 * 24));
+    return diffDias >= 7;
   };
 
   const isMesmoDiaQueHoje = (raw) => {
-    if (!raw) return false;
-    const d = new Date(raw);
-    if (Number.isNaN(d.getTime())) return false;
+    const d = parseDataBR(raw);
+    if (!d) return false;
     const hoje = new Date();
     return d.getFullYear() === hoje.getFullYear()
       && d.getMonth() === hoje.getMonth()
@@ -865,7 +882,14 @@ export default function Encomendas({ user }) {
     const matchesSearch =
       nome.toLowerCase().includes(searchLower) ||
       idUnidade.toString().toLowerCase().includes(searchLower);
-    const matchesStatus = filterStatus === "Todos" || status === filterStatus;
+    let matchesStatus;
+    if (filterStatus === "Todos") {
+      matchesStatus = true;
+    } else if (filterStatus === "EntregueHoje") {
+      matchesStatus = isEntregue(e) && isMesmoDiaQueHoje(getCell(e, "DATA_SAIDA") || getCell(e, "data_saida"));
+    } else {
+      matchesStatus = status === filterStatus;
+    }
     return matchesSearch && matchesStatus;
   });
 
@@ -957,53 +981,54 @@ export default function Encomendas({ user }) {
         </button>
       </header>
 
-      {/* DASHBOARD */}
+      {/* DASHBOARD — cards clicáveis que filtram a tabela */}
       <div className="encomendas-stats">
         {[
-          { label: 'Aguardando Retirada', value: stats.pendentes, Icon: Box, color: '#f59e0b' },
-          { label: 'Entregues Hoje', value: stats.entreguesHoje, Icon: CheckCircle2, color: '#22c55e' },
-          { label: 'Armazenados', value: stats.armazenados, Icon: Archive, color: '#2563eb' },
-          { label: 'Total de Volumes', value: stats.volumes, Icon: Truck, color: '#3b82f6' },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            className="enc-stat-card"
-            style={{
-              backgroundColor: theme.bgCard,
-              border: `1px solid ${theme.border}`,
-              borderRadius: '16px',
-              padding: '18px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '16px',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-          >
-            <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', backgroundColor: stat.color }} />
-            <div style={{ width: '48px', height: '48px', borderRadius: '14px', backgroundColor: `${stat.color}1a`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <stat.Icon size={24} color={stat.color} />
+          { label: 'Aguardando Retirada', value: stats.pendentes, Icon: Box, color: '#f59e0b', filterValue: 'Pendente' },
+          { label: 'Entregues Hoje', value: stats.entreguesHoje, Icon: CheckCircle2, color: '#22c55e', filterValue: 'EntregueHoje' },
+          { label: 'Armazenados', value: stats.armazenados, Icon: Archive, color: '#2563eb', filterValue: 'Armazenado' },
+          { label: 'Total de Volumes', value: stats.volumes, Icon: Truck, color: '#3b82f6', filterValue: 'Todos' },
+        ].map((stat) => {
+          const isActive = filterStatus === stat.filterValue;
+          return (
+            <div
+              key={stat.label}
+              className="enc-stat-card"
+              role="button"
+              onClick={() => { setFilterStatus(stat.filterValue); setCurrentPage(1); }}
+              style={{
+                backgroundColor: theme.bgCard,
+                border: `2px solid ${isActive ? stat.color : theme.border}`,
+                borderRadius: '16px',
+                padding: '18px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+                position: 'relative',
+                overflow: 'hidden',
+                cursor: 'pointer',
+                boxShadow: isActive ? `0 6px 16px ${stat.color}40` : 'none',
+              }}
+            >
+              <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', backgroundColor: stat.color }} />
+              <div style={{ width: '48px', height: '48px', borderRadius: '14px', backgroundColor: `${stat.color}1a`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <stat.Icon size={24} color={stat.color} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span style={{ color: theme.textSecondary, fontSize: '13px', fontWeight: '600' }}>{stat.label}</span>
+                <span style={{ fontSize: '28px', fontWeight: '800', color: theme.text, lineHeight: 1.1 }}>{stat.value}</span>
+              </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <span style={{ color: theme.textSecondary, fontSize: '13px', fontWeight: '600' }}>{stat.label}</span>
-              <span style={{ fontSize: '28px', fontWeight: '800', color: theme.text, lineHeight: 1.1 }}>{stat.value}</span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* FILTROS */}
+      {/* FILTROS — o filtro de status agora é feito clicando nos cards acima */}
       <div className="encomendas-filters" style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', padding: '0 12px', borderRadius: '8px', border: '1px solid', borderColor: theme.border, backgroundColor: theme.bgCard }}>
           <Search size={18} color={theme.textSecondary} />
           <input placeholder="Buscar por unidade ou morador..." style={{ border: 'none', background: 'none', padding: '10px 0', outline: 'none', color: theme.text, width: '100%' }} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ padding: '10px', borderRadius: '8px', border: '1px solid', borderColor: theme.border, backgroundColor: theme.bgCard, color: theme.text }}>
-          <option value="Todos">Todos Status</option>
-          <option value="Pendente">Aguardando Retirada</option>
-          <option value="Entregue">Entregue</option>
-          <option value="Armazenado">Armazenado</option>
-        </select>
       </div>
 
       {/* TABELA */}
