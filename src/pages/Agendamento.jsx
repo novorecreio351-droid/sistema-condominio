@@ -386,12 +386,447 @@ export default function Agendamento({ user }) {
     }, 1500);
   };
 
+  const nomesDias  = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+  const nomesMeses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+                      "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
+  const diasDoMes = useMemo(() => {
+    const ano = viewMonth.getFullYear();
+    const mes = viewMonth.getMonth();
+    const primeiro = new Date(ano, mes, 1).getDay();
+    const total    = new Date(ano, mes + 1, 0).getDate();
+    const cells = Array(primeiro).fill(null);
+    for (let i = 1; i <= total; i++) cells.push(i);
+    return cells;
+  }, [viewMonth]);
+
+  const agendamentosSlot = (hora) =>
+    agendamentosDoDia.filter(ag => ag.hora_inicio === hora);
+
+  const slotLivre = (hora) => {
+    const inicioMin = horaParaMinutos(hora);
+    return !agendamentosDoDia.some(ag => {
+      if (ag.status === "Cancelado") return false;
+      const agInicio = horaParaMinutos(ag.hora_inicio);
+      const agFim    = agInicio + duracaoParaMinutos(ag.duracao);
+      return inicioMin >= agInicio && inicioMin < agFim;
+    });
+  };
+
+  const totalDisponiveis = HORARIOS.filter(h => slotLivre(h)).length;
+
   return (
-    <div style={{ padding: 20, color: theme.text }}>
-      {loadingInitial
-        ? <p>Carregando...</p>
-        : <p>Agendamento — {agendamentos.length} registros carregados.</p>
-      }
+    <div style={{ padding: "20px", maxWidth: "1200px", margin: "0 auto" }}>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .animate-spin { animation: spin 1s linear infinite; }
+        .slot-livre:hover { background: ${theme.isDark ? "#0369a120" : "#e0f2fe"} !important; border-color: #0369a1 !important; cursor: pointer; }
+        .slot-livre:hover .slot-plus { color: ${theme.isDark ? "#38bdf8" : "#0369a1"} !important; }
+        .cal-day:hover { background: ${theme.isDark ? "#334155" : "#f1f5f9"} !important; cursor: pointer; }
+        .ag-card:hover { opacity: 0.85; cursor: pointer; }
+      `}</style>
+
+      {(loadingInitial || loadingGlobal) && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.7)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:9999 }}>
+          <Loader2 className="animate-spin" color="#3b82f6" size={50} />
+        </div>
+      )}
+
+      <div style={{ marginBottom: 20 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: theme.text, margin: 0 }}>Agendamento</h1>
+        <p style={{ fontSize: 14, color: theme.textSecondary, margin: "4px 0 0" }}>Gerencie as reuniões com moradores, prestadores e colaboradores.</p>
+      </div>
+
+      <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexDirection: isMobile ? "column" : "row" }}>
+
+        {/* SIDEBAR ESQUERDA */}
+        <div style={{ width: isMobile ? "100%" : 220, flexShrink: 0, background: theme.mainBg, borderRadius: 16, padding: 16, border: `1px solid ${theme.border}`, display: "flex", flexDirection: "column", gap: 16 }}>
+
+          {/* Mini Calendário */}
+          <div>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom: 10 }}>
+              <button
+                onClick={() => setViewMonth(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
+                style={{ background: theme.bg, border: `1px solid ${theme.border}`, color: theme.text, borderRadius: 6, width: 26, height: 26, cursor: "pointer", display:"flex", alignItems:"center", justifyContent:"center" }}
+              ><ChevronLeft size={14} /></button>
+              <span style={{ fontSize: 13, fontWeight: 700, color: theme.text }}>
+                {nomesMeses[viewMonth.getMonth()]} {viewMonth.getFullYear()}
+              </span>
+              <button
+                onClick={() => setViewMonth(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
+                style={{ background: theme.bg, border: `1px solid ${theme.border}`, color: theme.text, borderRadius: 6, width: 26, height: 26, cursor: "pointer", display:"flex", alignItems:"center", justifyContent:"center" }}
+              ><ChevronRight size={14} /></button>
+            </div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap: 2, textAlign:"center" }}>
+              {nomesDias.map(d => (
+                <span key={d} style={{ fontSize: 10, fontWeight: 600, color: theme.textSecondary, padding: "2px 0" }}>{d}</span>
+              ))}
+              {diasDoMes.map((dia, idx) => {
+                if (!dia) return <span key={`e-${idx}`} />;
+                const dateStr = `${viewMonth.getFullYear()}-${(viewMonth.getMonth()+1).toString().padStart(2,"0")}-${dia.toString().padStart(2,"0")}`;
+                const isToday    = dateStr === hoje;
+                const isSelected = dateStr === selectedDate;
+                const temAg      = diasComAgendamento.has(dateStr);
+                return (
+                  <div
+                    key={dateStr}
+                    className="cal-day"
+                    onClick={() => setSelectedDate(dateStr)}
+                    style={{
+                      padding: "4px 2px",
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: isToday ? 700 : 400,
+                      color: isSelected ? (theme.isDark ? "#38bdf8" : "#0369a1") : isToday ? "#3b82f6" : theme.text,
+                      background: isSelected ? (theme.isDark ? "#0369a130" : "#e0f2fe") : "transparent",
+                      border: isToday && !isSelected ? `1px solid #3b82f6` : "1px solid transparent",
+                      textAlign: "center",
+                    }}
+                  >
+                    {dia}
+                    {temAg && (
+                      <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#10b981", margin: "1px auto 0" }} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Próximos */}
+          {proximosAgendamentos.length > 0 && (
+            <div>
+              <p style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Próximos</p>
+              {proximosAgendamentos.map(ag => {
+                const c = STATUS_COLORS[ag.status] || STATUS_COLORS.Agendado;
+                const isHoje = ag.data === hoje;
+                const [, m, d] = ag.data.split("-").map(Number);
+                const labelData = isHoje ? "Hoje" : `${d}/${m}`;
+                return (
+                  <div
+                    key={ag.id}
+                    onClick={() => { setSelectedDate(ag.data); abrirModalEditar(ag); }}
+                    style={{ background: theme.bg, borderRadius: 8, padding: 8, borderLeft: `3px solid ${c.border}`, marginBottom: 6, cursor: "pointer" }}
+                  >
+                    <div style={{ fontSize: 10, color: theme.textSecondary }}>{labelData} · {ag.hora_inicio}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>{ag.nome}</div>
+                    <div style={{ fontSize: 10, color: theme.textSecondary }}>{ag.tipo === "Morador" && ag.id_unidade ? `Unid. ${ag.id_unidade} · ` : ""}{ag.assunto}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ÁREA PRINCIPAL */}
+        <div style={{ flex: 1, background: theme.mainBg, borderRadius: 16, padding: 20, border: `1px solid ${theme.border}` }}>
+
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
+            <div>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: theme.text, margin: 0, textTransform: "capitalize" }}>
+                {formatDataExtenso(selectedDate)}
+              </h2>
+              <p style={{ fontSize: 13, color: theme.textSecondary, margin: "4px 0 0" }}>
+                {agendamentosDoDia.filter(a => a.status !== "Cancelado").length} agendamento(s) · {totalDisponiveis} horário(s) disponível(is)
+              </p>
+            </div>
+            <button
+              onClick={() => abrirModalNovo()}
+              style={{ background: "#3b82f6", color: "white", border: "none", padding: "9px 16px", borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: "pointer", display:"flex", alignItems:"center", gap: 6 }}
+            >
+              <Plus size={16} /> Novo Agendamento
+            </button>
+          </div>
+
+          <div style={{ display:"flex", gap: 12, flexWrap:"wrap", marginBottom: 16 }}>
+            {STATUS_OPTIONS.map(s => {
+              const c = STATUS_COLORS[s];
+              return (
+                <div key={s} style={{ display:"flex", alignItems:"center", gap: 5, fontSize: 11, color: theme.textSecondary }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 3, background: c.border }} />
+                  {s}
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ display:"flex", flexDirection:"column", gap: 4 }}>
+            {HORARIOS.map(hora => {
+              const ags = agendamentosSlot(hora);
+
+              if (ags.length > 0) {
+                return ags.map(ag => {
+                  const c = STATUS_COLORS[ag.status] || STATUS_COLORS.Agendado;
+                  return (
+                    <div key={ag.id} style={{ display:"flex", gap: 12, alignItems:"flex-start" }}>
+                      <div style={{ width: 44, fontSize: 11, color: theme.textSecondary, textAlign:"right", paddingTop: 12, flexShrink: 0, fontWeight: 600 }}>{hora}</div>
+                      <div
+                        className="ag-card"
+                        onClick={() => abrirModalEditar(ag)}
+                        style={{ flex: 1, background: c.bg, borderLeft: `3px solid ${c.border}`, borderRadius: 10, padding: "10px 14px", minHeight: 44 }}
+                      >
+                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: theme.text }}>{ag.nome}</div>
+                            <div style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>
+                              {ag.tipo}
+                              {ag.tipo === "Morador" && ag.id_unidade ? ` · Unid. ${ag.id_unidade}` : ""}
+                              {ag.telefone ? ` · ${ag.telefone}` : ""}
+                              {ag.assunto ? ` · ${ag.assunto}` : ""}
+                            </div>
+                            <div style={{ fontSize: 10, marginTop: 2, color: theme.textSecondary }}>
+                              {ag.hora_inicio} – {calcHoraFim(ag.hora_inicio, ag.duracao)} ({ag.duracao})
+                            </div>
+                          </div>
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: c.badge, color: c.border, whiteSpace:"nowrap", marginLeft: 8 }}>
+                            {ag.status}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                });
+              }
+
+              const cobertoAntes = HORARIOS.slice(0, HORARIOS.indexOf(hora)).some(h => {
+                return agendamentosSlot(h).some(ag => {
+                  if (ag.status === "Cancelado") return false;
+                  const agInicio = horaParaMinutos(ag.hora_inicio);
+                  const agFim    = agInicio + duracaoParaMinutos(ag.duracao);
+                  return horaParaMinutos(hora) >= agInicio && horaParaMinutos(hora) < agFim;
+                });
+              });
+
+              if (cobertoAntes) return null;
+
+              return (
+                <div key={hora} style={{ display:"flex", gap: 12, alignItems:"center" }}>
+                  <div style={{ width: 44, fontSize: 11, color: theme.textSecondary, textAlign:"right", flexShrink: 0, fontWeight: 600 }}>{hora}</div>
+                  <div
+                    className="slot-livre"
+                    onClick={() => abrirModalNovo(hora)}
+                    style={{ flex: 1, minHeight: 44, borderRadius: 10, border: `1px dashed ${theme.border}`, background: "transparent", display:"flex", alignItems:"center", padding: "0 14px", gap: 6 }}
+                  >
+                    <span className="slot-plus" style={{ fontSize: 18, color: theme.border }}>+</span>
+                    <span style={{ fontSize: 12, color: theme.border }}>Clique para agendar</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* MODAL */}
+      {showModal && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.75)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
+          <div style={{ background: theme.mainBg, borderRadius: 20, padding: 24, width: "90%", maxWidth: 480, border: `1px solid ${theme.border}`, maxHeight: "90vh", overflowY: "auto" }}>
+
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom: 20 }}>
+              <h3 style={{ margin: 0, color: theme.text, fontSize: 16, fontWeight: 700 }}>
+                {modalType === "add" ? "Novo Agendamento" : "Editar Agendamento"}
+                {formData.hora_inicio ? ` · ${formData.hora_inicio}` : ""}
+              </h3>
+              <X size={20} color={theme.textSecondary} style={{ cursor:"pointer" }} onClick={() => setShowModal(false)} />
+            </div>
+
+            <div style={{ display:"flex", flexDirection:"column", gap: 14 }}>
+
+              {/* Tipo */}
+              <div>
+                <label style={{ fontSize: 10, fontWeight: 700, textTransform:"uppercase", color: "#64748b", display:"block", marginBottom: 5 }}>Tipo de Reunião</label>
+                <select
+                  value={formData.tipo}
+                  onChange={e => setFormData(prev => ({ ...prev, tipo: e.target.value, id_unidade: "", id_morador: "", nome: "", telefone: "" }))}
+                  style={{ width:"100%", padding: "9px 12px", borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.bg, color: theme.text, fontSize: 13, outline:"none" }}
+                >
+                  {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+
+              {/* Unidade (somente Morador) */}
+              {formData.tipo === "Morador" && (
+                <div ref={dropdownRef} style={{ position:"relative" }}>
+                  <label style={{ fontSize: 10, fontWeight: 700, textTransform:"uppercase", color: "#64748b", display:"block", marginBottom: 5 }}>Unidade</label>
+                  <div
+                    onClick={() => setShowUnitDropdown(!showUnitDropdown)}
+                    style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.bg, color: theme.text, fontSize: 13, cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center" }}
+                  >
+                    <span>{formData.id_unidade ? getUnitLabel(formData.id_unidade) : "Selecione a unidade..."}</span>
+                    <ChevronDown size={16} color={theme.textSecondary} />
+                  </div>
+                  {showUnitDropdown && (
+                    <div style={{ position:"absolute", top:"100%", left:0, width:"100%", background: theme.mainBg, border: `1px solid ${theme.border}`, borderRadius: 8, zIndex:1200, boxShadow:"0 8px 16px rgba(0,0,0,0.2)", marginTop: 4, overflow:"hidden" }}>
+                      <div style={{ padding: 8 }}>
+                        <input
+                          autoFocus
+                          value={unitSearch}
+                          onChange={e => setUnitSearch(e.target.value)}
+                          placeholder="Bloco ou unidade..."
+                          style={{ width:"100%", padding: 8, borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.bg, color: theme.text, boxSizing:"border-box", outline:"none", fontSize: 13 }}
+                        />
+                      </div>
+                      <div style={{ maxHeight: 180, overflowY:"auto" }}>
+                        {unidadesFiltradas.map(u => (
+                          <div
+                            key={u.id}
+                            onClick={() => handleUnidadeSelect(u.id)}
+                            style={{ padding: "9px 14px", cursor:"pointer", fontSize: 13, color: theme.text, borderBottom: `1px solid ${theme.border}` }}
+                            onMouseEnter={e => e.currentTarget.style.background = theme.bg}
+                            onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                          >
+                            BLOCO {u.bloco} - UNIDADE {u.unidade}
+                          </div>
+                        ))}
+                        {unidadesFiltradas.length === 0 && (
+                          <div style={{ padding: 12, textAlign:"center", fontSize: 12, color: theme.textSecondary }}>Nenhuma unidade encontrada</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Dropdown morador (quando há 2+) */}
+              {formData.tipo === "Morador" && formData.id_unidade && moradoresDaUnidade.length > 1 && (
+                <div>
+                  <label style={{ fontSize: 10, fontWeight: 700, textTransform:"uppercase", color: "#64748b", display:"block", marginBottom: 5 }}>Morador</label>
+                  <select
+                    value={formData.id_morador || ""}
+                    onChange={e => handleMoradorSelect(e.target.value)}
+                    style={{ width:"100%", padding: "9px 12px", borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.bg, color: theme.text, fontSize: 13, outline:"none" }}
+                  >
+                    <option value="">Avulso / Outro</option>
+                    {moradoresDaUnidade.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {/* Nome + Telefone */}
+              <div style={{ display:"grid", gridTemplateColumns:"1.2fr 1fr", gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 10, fontWeight: 700, textTransform:"uppercase", color: "#64748b", display:"block", marginBottom: 5 }}>Nome</label>
+                  <input
+                    value={formData.nome}
+                    readOnly={formData.tipo === "Morador" && !!formData.id_morador}
+                    onChange={e => setFormData(prev => ({ ...prev, nome: e.target.value }))}
+                    style={{ width:"100%", padding: "9px 12px", borderRadius: 8, border: `1px solid ${theme.border}`, background: formData.tipo === "Morador" && formData.id_morador ? theme.mainBg : theme.bg, color: theme.text, fontSize: 13, outline:"none", opacity: formData.tipo === "Morador" && formData.id_morador ? 0.7 : 1 }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 10, fontWeight: 700, textTransform:"uppercase", color: "#64748b", display:"block", marginBottom: 5 }}>Telefone</label>
+                  <input
+                    value={formData.telefone}
+                    onChange={e => setFormData(prev => ({ ...prev, telefone: e.target.value }))}
+                    placeholder="(11) 99999-0000"
+                    style={{ width:"100%", padding: "9px 12px", borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.bg, color: theme.text, fontSize: 13, outline:"none" }}
+                  />
+                </div>
+              </div>
+
+              {/* Data + Hora + Duração */}
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 10, fontWeight: 700, textTransform:"uppercase", color: "#64748b", display:"block", marginBottom: 5 }}>Data</label>
+                  <input
+                    type="date"
+                    value={formData.data}
+                    onChange={e => { setFormData(prev => ({ ...prev, data: e.target.value })); setConflitError(""); }}
+                    style={{ width:"100%", padding: "9px 8px", borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.bg, color: theme.text, fontSize: 13, outline:"none" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 10, fontWeight: 700, textTransform:"uppercase", color: "#64748b", display:"block", marginBottom: 5 }}>Hora Início</label>
+                  <input
+                    type="time"
+                    value={formData.hora_inicio}
+                    min="10:00"
+                    max="17:00"
+                    onChange={e => { setFormData(prev => ({ ...prev, hora_inicio: e.target.value })); setConflitError(""); }}
+                    style={{ width:"100%", padding: "9px 8px", borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.bg, color: theme.text, fontSize: 13, outline:"none" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 10, fontWeight: 700, textTransform:"uppercase", color: "#64748b", display:"block", marginBottom: 5 }}>Duração</label>
+                  <select
+                    value={formData.duracao}
+                    onChange={e => { setFormData(prev => ({ ...prev, duracao: e.target.value })); setConflitError(""); }}
+                    style={{ width:"100%", padding: "9px 8px", borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.bg, color: theme.text, fontSize: 13, outline:"none" }}
+                  >
+                    {DURACOES.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Assunto */}
+              <div>
+                <label style={{ fontSize: 10, fontWeight: 700, textTransform:"uppercase", color: "#64748b", display:"block", marginBottom: 5 }}>Assunto / Motivo</label>
+                <input
+                  value={formData.assunto}
+                  onChange={e => setFormData(prev => ({ ...prev, assunto: e.target.value }))}
+                  placeholder="Ex: Cobrança, problema na unidade..."
+                  style={{ width:"100%", padding: "9px 12px", borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.bg, color: theme.text, fontSize: 13, outline:"none" }}
+                />
+              </div>
+
+              {/* Observações */}
+              <div>
+                <label style={{ fontSize: 10, fontWeight: 700, textTransform:"uppercase", color: "#64748b", display:"block", marginBottom: 5 }}>Observações</label>
+                <textarea
+                  value={formData.obs}
+                  onChange={e => setFormData(prev => ({ ...prev, obs: e.target.value }))}
+                  rows={2}
+                  style={{ width:"100%", padding: "9px 12px", borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.bg, color: theme.text, fontSize: 13, outline:"none", resize:"vertical" }}
+                />
+              </div>
+
+              {/* Status */}
+              <div>
+                <label style={{ fontSize: 10, fontWeight: 700, textTransform:"uppercase", color: "#64748b", display:"block", marginBottom: 5 }}>Status</label>
+                <select
+                  value={formData.status}
+                  onChange={e => setFormData(prev => ({ ...prev, status: e.target.value }))}
+                  style={{ width:"100%", padding: "9px 12px", borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.bg, color: theme.text, fontSize: 13, outline:"none" }}
+                >
+                  {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+
+              {/* Aviso de conflito */}
+              {conflitError && (
+                <div style={{ background: "#ef444420", border: "1px solid #ef4444", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#fca5a5", display:"flex", alignItems:"center", gap: 6 }}>
+                  <AlertCircle size={14} color="#ef4444" /> {conflitError}
+                </div>
+              )}
+
+              {/* Botões */}
+              <div style={{ display:"flex", gap: 10, marginTop: 4 }}>
+                {modalType === "edit" && (
+                  <button
+                    onClick={() => handleDelete(formData.id)}
+                    style={{ background: "#ef444420", color: "#ef4444", border: "1px solid #ef4444", padding: "10px 14px", borderRadius: 10, fontSize: 13, cursor:"pointer", display:"flex", alignItems:"center", gap: 6 }}
+                  >
+                    <Trash2 size={14} /> Excluir
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowModal(false)}
+                  style={{ background: theme.bg, color: theme.textSecondary, border: `1px solid ${theme.border}`, padding: "10px 14px", borderRadius: 10, fontSize: 13, cursor:"pointer" }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSave}
+                  style={{ flex: 1, background: "#3b82f6", color: "white", border: "none", padding: 10, borderRadius: 10, fontSize: 13, fontWeight: 700, cursor:"pointer" }}
+                >
+                  {modalType === "add" ? "Salvar Agendamento" : "Salvar Alterações"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
