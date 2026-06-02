@@ -324,9 +324,6 @@ const getContagemVeiculos = (idUnidadeMorador) => {
   
   // Busca a vaga
   const vaga = vagas.find(v => String(v.id_unidade).trim() === idProcurado);
-  
-  // 🔥 ADICIONE ESTA LINHA ABAIXO PARA DEBUG:
-  console.log("Buscando ID:", idProcurado, "Vaga encontrada:", vaga, "Lista de Vagas:", vagas);
 
   if (!vaga) return 0;
 

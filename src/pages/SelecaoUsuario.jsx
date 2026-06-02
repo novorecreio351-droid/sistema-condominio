@@ -24,7 +24,9 @@ export default function SelecaoUsuario({ onSelectUser }) {
         const response = await fetch(url);
         const data = await response.json();
         
-        const usersFormatados = data.map(user => ({
+        // Segurança: descartamos a senha (e outros campos sensíveis) assim que chegam,
+        // para que nunca fiquem em memória/estado/sessionStorage do navegador.
+        const usersFormatados = data.map(({ senha, password, ...user }) => ({
           ...user,
           color: user.cargo?.toLowerCase().includes("síndico") ? "#16a34a" : "#3b82f6",
           bg: user.cargo?.toLowerCase().includes("síndico") ? "#f0fdf4" : "#eff6ff",
@@ -56,23 +58,27 @@ export default function SelecaoUsuario({ onSelectUser }) {
     setLoading(true);
     setError("");
 
-    const params = new URLSearchParams({
-      token: TOKEN,
-      action: "login",
-      email: selectedProfile.email,
-      senha: password
-    });
-
     try {
-      const url = `${API_URL}?${params.toString()}`;
-      const response = await fetch(url, { method: "GET", mode: "cors", redirect: "follow" });
+      // Login via POST: a senha vai no corpo, não na URL (evita histórico/logs).
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({
+          token: TOKEN,
+          action: "login",
+          email: selectedProfile.email,
+          senha: password
+        })
+      });
       const result = await response.json();
 
       if (result.success) {
-        const usuarioCompleto = { ...selectedProfile, ...result.data };
+        // Nunca persistir a senha retornada pelo backend no navegador.
+        const { senha, password, ...dadosUsuario } = result.data || {};
+        const usuarioCompleto = { ...selectedProfile, ...dadosUsuario };
         sessionStorage.setItem("usuarioLogado", JSON.stringify(usuarioCompleto));
         onSelectUser(usuarioCompleto);
-        navigate("/dashboard"); 
+        navigate("/dashboard");
       } else {
         setError(result.message || "Credenciais incorretas.");
       }
