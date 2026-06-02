@@ -60,6 +60,27 @@ function formatDataExtenso(dateStr) {
   });
 }
 
+// O Google Sheets pode converter "2026-06-15" em Date e o backend devolver
+// "15/06/2026 00:00". Esta função sempre retorna "YYYY-MM-DD".
+function normalizarData(valor) {
+  if (!valor) return "";
+  const datePart = valor.toString().trim().split(" ")[0].split("T")[0];
+  if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) return datePart;
+  if (datePart.includes("/")) {
+    const [d, m, y] = datePart.split("/");
+    if (d && m && y) return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+  return datePart;
+}
+
+// "10:00" pode virar "30/12/1899 10:00" no Sheets. Extrai sempre "HH:MM".
+function normalizarHora(valor) {
+  if (!valor) return "";
+  const match = valor.toString().match(/(\d{1,2}):(\d{2})/);
+  if (match) return `${match[1].padStart(2, "0")}:${match[2]}`;
+  return valor.toString().trim();
+}
+
 const FORM_INICIAL = {
   tipo: "Morador",
   id_unidade: "",
@@ -131,8 +152,8 @@ export default function Agendamento({ user }) {
         id_unidade:  item.id_unidade  || item.ID_UNIDADE  || "",
         nome:        item.nome        || item.NOME        || "",
         telefone:    item.telefone    || item.TELEFONE    || "",
-        data:        (item.data       || item.DATA        || "").split(" ")[0].split("T")[0],
-        hora_inicio: item.hora_inicio || item.HORA_INICIO || "",
+        data:        normalizarData(item.data || item.DATA),
+        hora_inicio: normalizarHora(item.hora_inicio || item.HORA_INICIO),
         duracao:     item.duracao     || item.DURACAO     || "1h",
         assunto:     item.assunto     || item.ASSUNTO     || "",
         obs:         item.obs         || item.OBS         || "",

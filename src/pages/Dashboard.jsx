@@ -15,8 +15,27 @@ import {
 } from "lucide-react";
 import { can } from "../auth/permissions"; // Removi o .js
 
-const TOKEN = import.meta.env.VITE_SHEETS_TOKEN; 
+const TOKEN = import.meta.env.VITE_SHEETS_TOKEN;
 const SHEETS_URL = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8epZMJIhCmapSOxyTegLMSEGZ2jBMGIxQ4cJb4a23oveAAaW/exec";
+
+// O Google Sheets pode converter datas/horas; normaliza para "YYYY-MM-DD" e "HH:MM".
+function normalizarDataAg(valor) {
+  if (!valor) return "";
+  const datePart = valor.toString().trim().split(" ")[0].split("T")[0];
+  if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) return datePart;
+  if (datePart.includes("/")) {
+    const [d, m, y] = datePart.split("/");
+    if (d && m && y) return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+  return datePart;
+}
+
+function normalizarHoraAg(valor) {
+  if (!valor) return "";
+  const match = valor.toString().match(/(\d{1,2}):(\d{2})/);
+  if (match) return `${match[1].padStart(2, "0")}:${match[2]}`;
+  return valor.toString().trim();
+}
 
 export default function Dashboard({ user }) {
   const navigate = useNavigate(); // Sem chaves!
@@ -153,8 +172,8 @@ export default function Dashboard({ user }) {
             id:          item.id          || "",
             tipo:        item.tipo        || "Morador",
             nome:        item.nome        || item.NOME        || "",
-            data:        (item.data       || item.DATA        || "").split(" ")[0].split("T")[0],
-            hora_inicio: item.hora_inicio || item.HORA_INICIO || "",
+            data:        normalizarDataAg(item.data || item.DATA),
+            hora_inicio: normalizarHoraAg(item.hora_inicio || item.HORA_INICIO),
             assunto:     item.assunto     || item.ASSUNTO     || "",
             status:      item.status      || item.STATUS      || "",
             id_unidade:  item.id_unidade  || item.ID_UNIDADE  || "",
