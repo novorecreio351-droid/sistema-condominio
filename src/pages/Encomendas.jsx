@@ -966,7 +966,17 @@ export default function Encomendas({ user }) {
 
                 return (
                   <tr key={itemId} style={{ borderBottom: `1px solid ${theme.border}` }}>
-                    <td style={{ ...tdStyle, textAlign: 'center', color: theme.textSecondary }}><Package size={16} color={theme.textSecondary} /></td>
+                    <td style={{ ...tdStyle, textAlign: 'center' }}>
+                      {(() => {
+                        const alerta = isAtrasadoArmazenar(item);
+                        return (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }} title={alerta ? "Há mais de 7 dias — armazenar no Armazém" : ""}>
+                            <Package size={16} color={alerta ? '#ef4444' : theme.textSecondary} />
+                            {alerta && <AlertCircle size={14} color="#ef4444" />}
+                          </span>
+                        );
+                      })()}
+                    </td>
                     <td style={{ ...tdStyle, whiteSpace: 'nowrap', color: theme.text }}>{unidade || "—"}</td>
                     <td style={{ ...tdStyle, color: theme.text }}>{nome || "—"}</td>
                     <td style={{ ...tdStyle, color: theme.text }}>
@@ -1021,11 +1031,14 @@ export default function Encomendas({ user }) {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                      <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#3b82f61a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Package size={18} color="#3b82f6" />
+                      <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: isAtrasadoArmazenar(item) ? '#ef444420' : '#3b82f61a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Package size={18} color={isAtrasadoArmazenar(item) ? '#ef4444' : '#3b82f6'} />
                       </div>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: '15px', color: theme.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nome || "—"}</div>
+                        <div style={{ fontWeight: 700, fontSize: '15px', color: theme.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {nome || "—"}
+                          {isAtrasadoArmazenar(item) && <AlertCircle size={14} color="#ef4444" />}
+                        </div>
                         <div style={{ fontSize: '12px', color: theme.textSecondary, display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <MapPin size={12} /> {unidade || "—"}
                         </div>
