@@ -7,6 +7,7 @@ import {
   FileText, Download, RotateCcw, CheckCircle2, AlertCircle, User, Paperclip, UploadCloud, ChevronDown, FileCheck
 } from "lucide-react";
 import { useTheme } from "../App";
+import { sessionParam, getSessionToken } from "../auth/session";
 
 // Bibliotecas para exportação
 import { jsPDF } from "jspdf";
@@ -220,6 +221,7 @@ const [tempProduto, setTempProduto] = useState({ nome: "", qtd: 1, valor: "" });
 
     const payload = {
       token: TOKEN,
+      session: getSessionToken(),
       action: isEditing ? "edit" : "add",
       sheet: "COMPRAS",
       id: idGerado,
@@ -287,7 +289,7 @@ const [tempProduto, setTempProduto] = useState({ nome: "", qtd: 1, valor: "" });
   const areasComuns = ["Portaria", "Área externa", "Piscina", "Salão de jogos", "Salão de festas", "Churrasqueira ch-a", "Churrasqueira ch-b", "Geral"];
 
   // 2. Criamos as promessas das duas chamadas
-  const fetchUnidades = fetch(`${API_URL}?token=${TOKEN}&sheet=UNIDADES`, { method: "GET", redirect: "follow" })
+  const fetchUnidades = fetch(`${API_URL}?token=${TOKEN}&sheet=UNIDADES${sessionParam()}`, { method: "GET", redirect: "follow" })
     .then(r => r.json())
     .then(data => {
       if (Array.isArray(data)) {
@@ -300,7 +302,7 @@ const [tempProduto, setTempProduto] = useState({ nome: "", qtd: 1, valor: "" });
     })
     .catch(() => setListaLocais(areasComuns));
 
-  const fetchCompras = fetch(`${API_URL}?token=${TOKEN}&sheet=COMPRAS`, { method: "GET", redirect: "follow" })
+  const fetchCompras = fetch(`${API_URL}?token=${TOKEN}&sheet=COMPRAS${sessionParam()}`, { method: "GET", redirect: "follow" })
     .then(r => r.json())
     .then(data => {
       if (Array.isArray(data)) {
@@ -324,7 +326,7 @@ const [tempProduto, setTempProduto] = useState({ nome: "", qtd: 1, valor: "" });
 
 const fetchItensCompra = async (idCompra) => {
   try {
-    const response = await fetch(`${API_URL}?token=${TOKEN}&sheet=COMPRAS_PRODUTOS`, { method: "GET" });
+    const response = await fetch(`${API_URL}?token=${TOKEN}&sheet=COMPRAS_PRODUTOS${sessionParam()}`, { method: "GET" });
     const data = await response.json();
     if (Array.isArray(data)) {
       // Filtra apenas os itens que pertencem a esta compra (ID_COMPRA é a segunda coluna)
@@ -343,7 +345,7 @@ const fetchItensCompra = async (idCompra) => {
 
 const fetchAnexosCompra = async (idCompra) => {
   try {
-    const response = await fetch(`${API_URL}?token=${TOKEN}&sheet=UPLOADS_COMPRAS`, { method: "GET" });
+    const response = await fetch(`${API_URL}?token=${TOKEN}&sheet=UPLOADS_COMPRAS${sessionParam()}`, { method: "GET" });
     const data = await response.json();
     
     if (Array.isArray(data)) {
@@ -491,11 +493,12 @@ const handleDelete = async (id) => {
     try {
       await fetch(API_URL, {
         method: "POST",
-        body: JSON.stringify({ 
-          token: TOKEN, 
-          action: "delete", 
-          sheet: "COMPRAS", 
-          id: id.toString() 
+        body: JSON.stringify({
+          token: TOKEN,
+          session: getSessionToken(),
+          action: "delete",
+          sheet: "COMPRAS",
+          id: id.toString()
         })
       });
       // Recarregar os dados após excluir (fetchData() deve ser a sua função de busca)

@@ -6,6 +6,7 @@ import {
   ChevronDown, AlertCircle, CheckCircle2
 } from "lucide-react";
 import { useTheme } from "../App";
+import { sessionParam, getSessionToken } from "../auth/session";
 
 const API_URL = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8epZMJIhCmapSOxyTegLMSEGZ2jBMGIxQ4cJb4a23oveAAaW/exec";
 const TOKEN = import.meta.env.VITE_SHEETS_TOKEN;
@@ -150,9 +151,9 @@ export default function Agendamento({ user }) {
     try {
       setLoadingInitial(true);
       const [resAg, resUn, resMo] = await Promise.all([
-        fetch(`${API_URL}?token=${TOKEN}&sheet=AGENDAMENTOS`, { redirect: "follow" }).then(r => r.json()),
-        fetch(`${API_URL}?token=${TOKEN}&sheet=UNIDADES`,     { redirect: "follow" }).then(r => r.json()),
-        fetch(`${API_URL}?token=${TOKEN}&sheet=MORADORES`,    { redirect: "follow" }).then(r => r.json()),
+        fetch(`${API_URL}?token=${TOKEN}&sheet=AGENDAMENTOS${sessionParam()}`, { redirect: "follow" }).then(r => r.json()),
+        fetch(`${API_URL}?token=${TOKEN}&sheet=UNIDADES${sessionParam()}`,     { redirect: "follow" }).then(r => r.json()),
+        fetch(`${API_URL}?token=${TOKEN}&sheet=MORADORES${sessionParam()}`,    { redirect: "follow" }).then(r => r.json()),
       ]);
 
       const lista = (Array.isArray(resAg) ? resAg : []).map(item => ({
@@ -204,6 +205,7 @@ export default function Agendamento({ user }) {
           headers: { "Content-Type": "text/plain" },
           body: JSON.stringify({
             token: TOKEN,
+            session: getSessionToken(),
             action: "edit",
             sheet: "AGENDAMENTOS",
             id: ag.id.toString(),
@@ -367,6 +369,7 @@ export default function Agendamento({ user }) {
     setLoadingGlobal(true);
     const payload = {
       token: TOKEN,
+      session: getSessionToken(),
       action: modalType === "add" ? "add" : "edit",
       sheet: "AGENDAMENTOS",
       id: modalType === "add" ? "SEQUENTIAL" : formData.id.toString(),
@@ -408,7 +411,7 @@ export default function Agendamento({ user }) {
       method: "POST",
       mode: "no-cors",
       headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ token: TOKEN, action: "delete", sheet: "AGENDAMENTOS", id: id.toString() }),
+      body: JSON.stringify({ token: TOKEN, session: getSessionToken(), action: "delete", sheet: "AGENDAMENTOS", id: id.toString() }),
     });
     setTimeout(async () => {
       setShowModal(false);
