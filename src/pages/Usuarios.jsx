@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Users, Plus, Edit2, Trash2, KeyRound, X, Loader2, LogOut } from "lucide-react";
+import { Users, Plus, Edit2, Trash2, KeyRound, X, Loader2, LogOut, Eye, EyeOff } from "lucide-react";
 import { useTheme } from "../App";
 import { sessionParam, getSessionToken, clearSessionToken } from "../auth/session";
 
@@ -17,6 +17,7 @@ export default function Usuarios({ user, onLogout }) {
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState("add"); // add | edit
   const [form, setForm] = useState(FORM_INICIAL);
+  const [showSenha, setShowSenha] = useState(false);
 
   const fetchUsuarios = async () => {
     try {
@@ -47,10 +48,11 @@ export default function Usuarios({ user, onLogout }) {
     }
   };
 
-  const abrirNovo = () => { setModalType("add"); setForm(FORM_INICIAL); setShowModal(true); };
+  const abrirNovo = () => { setModalType("add"); setForm(FORM_INICIAL); setShowSenha(false); setShowModal(true); };
   const abrirEditar = (u) => {
     setModalType("edit");
     setForm({ id: u.id, nome: u.nome || "", email: u.email || "", cargo: u.cargo || "Porteiro", senha: "" });
+    setShowSenha(false);
     setShowModal(true);
   };
 
@@ -64,7 +66,13 @@ export default function Usuarios({ user, onLogout }) {
     } else {
       if (!form.nome.trim() || !form.cargo) { alert("Preencha nome e cargo."); return; }
       const ok = await postAcao("editarUsuario", { id: form.id, data: { nome: form.nome, cargo: form.cargo } });
-      if (ok) { setShowModal(false); await fetchUsuarios(); }
+      if (!ok) return;
+      if (form.senha.trim()) {
+        const okSenha = await postAcao("resetarSenha", { id: form.id, data: { senha: form.senha.trim() } });
+        if (!okSenha) return;
+      }
+      setShowModal(false);
+      await fetchUsuarios();
     }
   };
 
@@ -161,12 +169,27 @@ export default function Usuarios({ user, onLogout }) {
                   {CARGOS.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              {modalType === "add" && (
-                <div>
-                  <label style={labelStyle}>Senha inicial</label>
-                  <input style={inputStyle} type="text" value={form.senha} onChange={e => setForm({ ...form, senha: e.target.value })} placeholder="Senha do novo usuário" />
+              <div>
+                <label style={labelStyle}>{modalType === "add" ? "Senha inicial" : "Nova senha"}</label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    style={{ ...inputStyle, paddingRight: 42 }}
+                    type={showSenha ? "text" : "password"}
+                    value={form.senha}
+                    onChange={e => setForm({ ...form, senha: e.target.value })}
+                    placeholder={modalType === "add" ? "Senha do novo usuário" : "Deixe em branco para não alterar"}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSenha(s => !s)}
+                    title={showSenha ? "Ocultar senha" : "Mostrar senha"}
+                    style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: theme.textSecondary, display: "inline-flex", padding: 6 }}
+                  >
+                    {showSenha ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
-              )}
+                {modalType === "edit" && <span style={{ fontSize: 11, color: theme.textSecondary }}>Para voltar ao padrão 123, use o botão de chave na lista.</span>}
+              </div>
 
               <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
                 <button onClick={() => setShowModal(false)} style={{ background: theme.bg, color: theme.textSecondary, border: `1px solid ${theme.border}`, padding: "10px 16px", borderRadius: 10, cursor: "pointer" }}>Cancelar</button>
