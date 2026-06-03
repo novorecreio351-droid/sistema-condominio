@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "../App";
 import { sessionParam, getSessionToken } from "../auth/session";
+import { DriveImage, abrirArquivoDrive } from "../components/DriveImage";
 
 // Bibliotecas para exportação
 import { jsPDF } from "jspdf";
@@ -1261,13 +1262,13 @@ const ActionMenuItem = ({ onClick, icon: Icon, label, color, theme }) => {
             <span style={{ fontSize: '10px', color: '#b91c1c', fontWeight: 'bold' }}>PDF</span>
           </div>
         ) : (
-          <img 
-            src={getPreviewUrl(fileUrl)} 
-            alt="Preview" 
-            style={{ 
-              width: '100%', height: '100%', borderRadius: '8px', 
-              objectFit: 'cover', border: `1px solid ${theme.border}` 
-            }} 
+          <DriveImage
+            source={fileUrl}
+            alt="Preview"
+            style={{
+              width: '100%', height: '100%', borderRadius: '8px',
+              objectFit: 'cover', border: `1px solid ${theme.border}`
+            }}
           />
         )}
 
@@ -1463,16 +1464,12 @@ const ActionMenuItem = ({ onClick, icon: Icon, label, color, theme }) => {
         if (!anexo) return null;
         
         // Extrai a URL correta, seja o anexo um objeto ou uma string
-        const fileUrlBruta = typeof anexo === 'object' ? anexo.url : anexo;
-        // Segurança: só abre links http(s) — bloqueia javascript:/data: vindos da planilha
-        const fileUrl = typeof fileUrlBruta === 'string' && /^https?:\/\//i.test(fileUrlBruta.trim()) ? fileUrlBruta.trim() : undefined;
-
-        // GERANDO A URL DE MINIATURA
-        const previewUrl = getGoogleDrivePreview(anexo);
+        const fileUrl = typeof anexo === 'object' ? anexo.url : anexo;
         const isPDF = fileUrl && typeof fileUrl === 'string' && fileUrl.toLowerCase().includes('.pdf');
 
         return (
-          <a key={idx} href={fileUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+          // Abre via getFoto autenticado (blob) — funciona com o arquivo privado no Drive
+          <div key={idx} onClick={() => abrirArquivoDrive(fileUrl)} style={{ cursor: 'pointer' }}>
             <div style={{
               width: '65px',
               height: '65px',
@@ -1485,13 +1482,13 @@ const ActionMenuItem = ({ onClick, icon: Icon, label, color, theme }) => {
               overflow: 'hidden',
               position: 'relative'
             }}>
-              
-              <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
+
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
                 color: theme.textSecondary,
-                zIndex: 1 
+                zIndex: 1
               }}>
                 <FileText size={20} color={isPDF ? "#b91c1c" : theme.textSecondary} />
                 <span style={{ fontSize: '9px', marginTop: '2px', fontWeight: 'bold' }}>
@@ -1500,26 +1497,22 @@ const ActionMenuItem = ({ onClick, icon: Icon, label, color, theme }) => {
               </div>
 
               {!isPDF && (
-                <img 
-                  src={previewUrl} 
+                <DriveImage
+                  source={fileUrl}
                   alt="Anexo"
-                  style={{ 
+                  style={{
                     position: 'absolute',
                     top: 0,
                     left: 0,
-                    width: '100%', 
-                    height: '100%', 
+                    width: '100%',
+                    height: '100%',
                     objectFit: 'cover',
-                    zIndex: 2,
-                    backgroundColor: theme.mainBg
-                  }} 
-                  onError={(e) => {
-                    e.target.style.display = 'none';
+                    zIndex: 2
                   }}
                 />
               )}
             </div>
-          </a>
+          </div>
         );
       })}
     </div>

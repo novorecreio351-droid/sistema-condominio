@@ -198,14 +198,15 @@ Backend grava campos verbatim (`appendRow`/`setValues`); frontend exporta XLSX c
 
 ### N7. Arquivos do Drive como `ANYONE_WITH_LINK` — 🟡 PARCIAL (2026-06-03, deploy @122)
 Fotos, atestados médicos (piscina) e assinaturas ficavam acessíveis por link a qualquer um que o obtenha.
-- ✅ **FEITO — atestados médicos (o mais sensível/LGPD):** novos atestados sobem **privados**
-  (sem `setSharing`); o frontend (`Piscina.jsx`) abre via `action=getFoto` autenticado (blob URL).
-- ⛔ **PENDENTE (você):** rodar **`privarAtestadosPiscina`** UMA vez no editor para privar os
-  atestados antigos — **somente APÓS** o deploy do frontend na Vercel (senão o botão antigo quebra).
-- 🟡 **MANTIDO público (decisão consciente):** fotos de entregas/festas/churrasqueira/compras e
-  fotos da piscina continuam `ANYONE_WITH_LINK` — os thumbnails do app dependem da URL pública do
-  Drive. Migrar tudo para `getFoto` é possível (padrão `DriveImage` da Piscina), mas é um refactor
-  maior em 5 telas. Assinaturas ficam em base64 na aba `ASSINATURA` (não no Drive).
+- ✅ **FEITO — atestados médicos:** privados e abertos via `getFoto` autenticado; migração
+  `privarAtestadosPiscina` executada pelo usuário em 2026-06-03 (verificação: 0 públicos).
+- ✅ **FEITO — TODAS as demais pastas (2026-06-03):** `DriveImage` extraído para
+  `src/components/DriveImage.jsx` e adotado em Festas, Churrasqueira e Compras (Encomendas e
+  Piscina já usavam getFoto). Backend não chama mais `setSharing(ANYONE_WITH_LINK)` em NENHUM
+  upload; utilitário `compartilharFotosEntregaExistentes` removido (era contraproducente).
+  Assinaturas ficam em base64 na aba `ASSINATURA` (não no Drive).
+- ⛔ **PENDENTE (você):** rodar **`privarTodosArquivosDrive`** UMA vez no editor — **somente APÓS**
+  o deploy do frontend na Vercel — e conferir com **`verificarArquivosPublicos`** (esperado: 0).
 
 ### N8. URLs da planilha abertas sem validar o scheme — ✅ RESOLVIDO (2026-06-03)
 `Churrasqueira.jsx:2196`, `Festas.jsx:2057`, `Piscina.jsx:1947`, `Compras.jsx:1459` — `window.open(url)`/`<a href>`

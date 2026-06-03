@@ -14,6 +14,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { sessionParam, getSessionToken } from "../auth/session";
+import { DriveImage, abrirArquivoDrive } from "../components/DriveImage";
 
 const API_URL = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8epZMJIhCmapSOxyTegLMSEGZ2jBMGIxQ4cJb4a23oveAAaW/exec";
 const TOKEN = import.meta.env.VITE_SHEETS_TOKEN;
@@ -1892,11 +1893,10 @@ const itensExibidos = React.useMemo(() => {
               .filter(up => (up.id_festa || up.ID_FESTA)?.toString() === formData.id?.toString())
               .map((f, idx) => (
                 <div key={`saved-${idx}`} style={{ position: 'relative' }}>
-                  <img 
-                    src={converterUrlDrive(f.url_drive || f.url)} 
+                  <DriveImage
+                    source={f.url_drive || f.url}
                     style={{ width: '90px', height: '90px', objectFit: 'cover', borderRadius: '10px', border: `1px solid ${theme.border}` }}
                     alt="Comprovante"
-                    onError={(e) => { e.target.src = "https://via.placeholder.com/90?text=Erro"; }}
                   />
                   <button 
                     onClick={() => handleDeleteImage(f.id || f.ID)}
@@ -2069,22 +2069,11 @@ const itensExibidos = React.useMemo(() => {
                       .filter(up => (up.id_festa || up.ID_FESTA)?.toString() === selectedFesta.id?.toString())
                       .map((file, idx) => {
   const urlOriginal = file.url_drive || file.url || "";
-  
-  // 1. Extrai o ID do Google Drive corretamente (Regex robusta)
-  const match = urlOriginal.match(/[-\w]{25,}/);
-  const fileId = match ? match[0] : null;
-
-  // 2. MONTAGEM DA URL (O SEGREDO ESTÁ AQUI)
-  // Usamos drive.google.com/thumbnail que é o endpoint de miniatura rápida
-  // O sz=w400 garante uma boa resolução
-  const previewUrl = fileId 
-    ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w400` 
-    : null;
 
   return (
     <div key={idx} style={{ textAlign: 'center' }}>
-      <div 
-        onClick={() => abrirUrlSegura(urlOriginal)}
+      <div
+        onClick={() => abrirArquivoDrive(urlOriginal)}
         style={{
           width: '100%', 
           height: '100px', 
@@ -2112,25 +2101,20 @@ const itensExibidos = React.useMemo(() => {
           </span>
         </div>
 
-        {/* IMAGEM: Fica por cima do ícone quando carregar */}
-        {previewUrl && (
-          <img 
-            src={previewUrl} 
-            alt="Anexo"
-            style={{ 
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%', 
-              height: '100%', 
-              objectFit: 'cover'
-            }} 
-            onError={(e) => {
-              // Se o Google não gerar miniatura (ex: PDF pesado), a imagem some e sobra o ícone
-              e.target.style.display = 'none';
-            }}
-          />
-        )}
+        {/* IMAGEM (via getFoto autenticado): fica por cima do ícone quando carregar.
+            PDFs ficam no placeholder transparente — o ícone VER ARQUIVO permanece. */}
+        <DriveImage
+          source={urlOriginal}
+          alt="Anexo"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover'
+          }}
+        />
       </div>
     </div>
   );
