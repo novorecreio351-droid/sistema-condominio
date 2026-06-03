@@ -196,7 +196,7 @@ Backend grava campos verbatim (`appendRow`/`setValues`); frontend exporta XLSX c
 `Vagas.jsx:140`, `Unidades.jsx:225`). Valor iniciando com `= + - @` vira fórmula no Excel/Sheets.
 - **Fix:** prefixar `'` (aspa simples) em strings que começam com `= + - @`, no backend (centralizado) e antes de exportar.
 
-### N7. Arquivos do Drive como `ANYONE_WITH_LINK` — 🟡 PARCIAL (2026-06-03, deploy @122)
+### N7. Arquivos do Drive como `ANYONE_WITH_LINK` — ✅ RESOLVIDO (2026-06-03, deploy @123)
 Fotos, atestados médicos (piscina) e assinaturas ficavam acessíveis por link a qualquer um que o obtenha.
 - ✅ **FEITO — atestados médicos:** privados e abertos via `getFoto` autenticado; migração
   `privarAtestadosPiscina` executada pelo usuário em 2026-06-03 (verificação: 0 públicos).
@@ -205,8 +205,10 @@ Fotos, atestados médicos (piscina) e assinaturas ficavam acessíveis por link a
   Piscina já usavam getFoto). Backend não chama mais `setSharing(ANYONE_WITH_LINK)` em NENHUM
   upload; utilitário `compartilharFotosEntregaExistentes` removido (era contraproducente).
   Assinaturas ficam em base64 na aba `ASSINATURA` (não no Drive).
-- ⛔ **PENDENTE (você):** rodar **`privarTodosArquivosDrive`** UMA vez no editor — **somente APÓS**
-  o deploy do frontend na Vercel — e conferir com **`verificarArquivosPublicos`** (esperado: 0).
+- ✅ **MIGRAÇÃO CONCLUÍDA (2026-06-03):** `privarTodosArquivosDrive` executada pelo usuário e
+  `verificarArquivosPublicos` confirmou **0 arquivos públicos**. Obs: erros "inherited permission"
+  durante a migração são corrida de propagação (a permissão herdada some sozinha segundos após
+  privar a pasta) — a verificação posterior é o que vale.
 
 ### N8. URLs da planilha abertas sem validar o scheme — ✅ RESOLVIDO (2026-06-03)
 `Churrasqueira.jsx:2196`, `Festas.jsx:2057`, `Piscina.jsx:1947`, `Compras.jsx:1459` — `window.open(url)`/`<a href>`
