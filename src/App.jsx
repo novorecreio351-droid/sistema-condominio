@@ -20,6 +20,7 @@ import Comunicado from "./pages/Comunicado";
 import Patrimonio from "./pages/Patrimonio";
 import Encomendas from "./pages/Encomendas";
 import Agendamento from "./pages/Agendamento";
+import Usuarios from "./pages/Usuarios";
 import { clearSessionToken } from "./auth/session";
 
 // ================= CONTEXTO DE TEMA =================
@@ -178,6 +179,10 @@ const atualizarAtividade = () => {
                     <Route path="/encomendas" element={<Encomendas user={usuarioLogado} />} />
                     <Route path="/agendamento" element={<Agendamento user={usuarioLogado} />} />
                   </>
+                )}
+
+                {usuarioLogado.cargo === "Desenvolvedor" && (
+                  <Route path="/usuarios" element={<Usuarios user={usuarioLogado} onLogout={handleLogout} />} />
                 )}
 
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />

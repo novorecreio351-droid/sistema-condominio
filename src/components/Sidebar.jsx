@@ -62,6 +62,8 @@ const hasAnyPermission = (items) => {
   Agendamento: [ROLES.SINDICO, ROLES.AUX, ROLES.DEV],
 
   Notas: [ROLES.SINDICO, ROLES.AUX, ROLES.DEV],
+
+  Usuarios: [ROLES.DEV],
 };
 
 const canAccess = (label) => {
@@ -228,6 +230,16 @@ const canAccess = (label) => {
       <p style={categoryTitle}>Gestão Financeira</p>
       <ul style={listStyle}>
         {renderItem("Notas", FileText)}
+      </ul>
+    </>
+  )}
+
+  {/* CATEGORIA ADMINISTRAÇÃO */}
+  {hasAnyPermission(["Usuarios"]) && (
+    <>
+      <p style={categoryTitle}>Administração</p>
+      <ul style={listStyle}>
+        {renderItem("Usuarios", UsersRound)}
       </ul>
     </>
   )}
