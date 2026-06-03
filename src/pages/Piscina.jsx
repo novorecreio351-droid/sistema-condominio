@@ -1964,8 +1964,9 @@ const handleSort = (key) => {
       </div>
     ) : (selectedFesta.url_atestado || selectedFesta.id_atestado_drive) ? (
       <div style={{display:'flex', flexDirection:'column', gap: 5}}>
-        <a 
-          href={selectedFesta.url_atestado || `https://drive.google.com/uc?id=${selectedFesta.id_atestado_drive}`} 
+        {/* Segurança: só abre links http(s) — bloqueia javascript:/data: vindos da planilha */}
+        <a
+          href={/^https?:\/\//i.test((selectedFesta.url_atestado || "").trim()) ? selectedFesta.url_atestado.trim() : `https://drive.google.com/uc?id=${selectedFesta.id_atestado_drive}`}
           target="_blank"
           rel="noopener noreferrer"
           style={{color: '#3b82f6', textDecoration: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4}}

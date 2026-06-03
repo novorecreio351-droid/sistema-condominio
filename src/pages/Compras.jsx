@@ -1463,8 +1463,10 @@ const ActionMenuItem = ({ onClick, icon: Icon, label, color, theme }) => {
         if (!anexo) return null;
         
         // Extrai a URL correta, seja o anexo um objeto ou uma string
-        const fileUrl = typeof anexo === 'object' ? anexo.url : anexo;
-        
+        const fileUrlBruta = typeof anexo === 'object' ? anexo.url : anexo;
+        // Segurança: só abre links http(s) — bloqueia javascript:/data: vindos da planilha
+        const fileUrl = typeof fileUrlBruta === 'string' && /^https?:\/\//i.test(fileUrlBruta.trim()) ? fileUrlBruta.trim() : undefined;
+
         // GERANDO A URL DE MINIATURA
         const previewUrl = getGoogleDrivePreview(anexo);
         const isPDF = fileUrl && typeof fileUrl === 'string' && fileUrl.toLowerCase().includes('.pdf');

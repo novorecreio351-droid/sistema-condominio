@@ -65,12 +65,11 @@ quais colunas sensíveis são enviadas ao client.
 
 ## 🟠 MÉDIO
 
-### 4. Dependência `xlsx@0.18.5` vulnerável
-Possui CVEs conhecidas (prototype pollution — CVE-2023-30533 — e ReDoS). A versão corrigida
-**não está no npm** (a SheetJS distribui pela CDN própria). Opções:
-- Trocar para a distribuição oficial (`https://cdn.sheetjs.com/`), ou
-- Substituir por outra lib de planilha, ou
-- Garantir que só processa arquivos `.xlsx` de origem confiável.
+### 4. Dependência `xlsx@0.18.5` vulnerável — ✅ RESOLVIDO (2026-06-03)
+Possuía CVEs conhecidas (prototype pollution — CVE-2023-30533 — e ReDoS). A versão corrigida
+não está no npm (a SheetJS distribui pela CDN própria).
+- **Feito:** trocado para a distribuição oficial `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`
+  (mesmo nome de pacote, imports inalterados). `npm audit` agora reporta 0 vulnerabilidades; build validado.
 
 ### 5. Falha de gravação silenciosa (`mode: "no-cors"`)
 Várias páginas gravam com `no-cors`, que impede ler a resposta — erros do servidor passam
@@ -194,10 +193,12 @@ Backend grava campos verbatim (`appendRow`/`setValues`); frontend exporta XLSX c
 ficam acessíveis por link a qualquer um que o obtenha.
 - **Fix:** manter privados e servir só via backend autenticado (padrão `getFoto` corrigido).
 
-### N8. URLs da planilha abertas sem validar o scheme
+### N8. URLs da planilha abertas sem validar o scheme — ✅ RESOLVIDO (2026-06-03)
 `Churrasqueira.jsx:2196`, `Festas.jsx:2057`, `Piscina.jsx:1947`, `Compras.jsx:1459` — `window.open(url)`/`<a href>`
-usam URLs vindas do Sheets/Drive. Um `javascript:`/`data:text/html,` executaria script na origem.
-- **Fix:** validar `https?://` antes de abrir; rejeitar `javascript:`/`data:`.
+usavam URLs vindas do Sheets/Drive. Um `javascript:`/`data:text/html,` executaria script na origem.
+- **Feito (quick-wins):** `abrirUrlSegura()` (valida `https?://` + `noopener,noreferrer`) em Festas/Churrasqueira.
+- **Feito (2026-06-03):** os dois `<a href>` residuais validados — `Compras.jsx` (anexos) e `Piscina.jsx`
+  (atestado) só renderizam href `https?://`; caso contrário caem no link do Drive construído/`undefined`.
 
 ### N9. `window.open` sem `noopener` (tabnabbing)
 `Churrasqueira.jsx:2196`, `Festas.jsx:2057` (e `Piscina.jsx:1949` só com `noreferrer`).
