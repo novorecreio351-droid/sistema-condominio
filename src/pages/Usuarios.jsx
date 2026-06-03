@@ -42,7 +42,7 @@ export default function Usuarios({ user, onLogout }) {
         body: JSON.stringify({ token: TOKEN, action, session: getSessionToken(), ...body }),
       }).then(r => r.json()).catch(() => ({ success: false, message: "Falha de conexão" }));
       if (!res.success) { alert(res.message || "Operação não permitida."); return false; }
-      return true;
+      return res;
     } finally {
       setSaving(false);
     }
@@ -77,9 +77,9 @@ export default function Usuarios({ user, onLogout }) {
   };
 
   const resetarSenha = async (u) => {
-    if (!confirm(`Redefinir a senha de ${u.nome} para 123?`)) return;
-    const ok = await postAcao("resetarSenha", { id: u.id });
-    if (ok) alert(`Senha de ${u.nome} agora é 123.`);
+    if (!confirm(`Gerar uma nova senha temporária para ${u.nome}?`)) return;
+    const res = await postAcao("resetarSenha", { id: u.id });
+    if (res) alert(`Senha temporária de ${u.nome}:\n\n${res.senhaTemporaria}\n\nAnote e repasse agora — ela não será exibida novamente.`);
   };
 
   const excluir = async (u) => {
@@ -131,7 +131,7 @@ export default function Usuarios({ user, onLogout }) {
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button title="Editar" style={btnIcon} onClick={() => abrirEditar(u)}><Edit2 size={16} /></button>
-                <button title="Resetar senha para 123" style={btnIcon} onClick={() => resetarSenha(u)}><KeyRound size={16} /></button>
+                <button title="Gerar senha temporária" style={btnIcon} onClick={() => resetarSenha(u)}><KeyRound size={16} /></button>
                 <button title="Excluir" style={{ ...btnIcon, color: "#ef4444", borderColor: "#ef4444" }} onClick={() => excluir(u)}><Trash2 size={16} /></button>
               </div>
             </div>
@@ -188,7 +188,7 @@ export default function Usuarios({ user, onLogout }) {
                     {showSenha ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
-                {modalType === "edit" && <span style={{ fontSize: 11, color: theme.textSecondary }}>Para voltar ao padrão 123, use o botão de chave na lista.</span>}
+                {modalType === "edit" && <span style={{ fontSize: 11, color: theme.textSecondary }}>Para gerar uma senha temporária aleatória, use o botão de chave na lista.</span>}
               </div>
 
               <div style={{ display: "flex", gap: 10, marginTop: 4 }}>

@@ -48,6 +48,23 @@ function fetchFotoCached(fileId) {
   fotoCache.set(fileId, p);
   return p;
 }
+// Abre um arquivo do Drive (ex.: atestado) buscando os bytes pelo backend autenticado
+// (action=getFoto) e exibindo via blob URL — funciona mesmo com o arquivo PRIVADO no Drive.
+// Abre a aba ANTES do fetch para não cair no bloqueador de popup.
+async function abrirArquivoDrive(source) {
+  const fileId = extrairFileIdDrive(source);
+  if (!fileId) { alert("Arquivo indisponível."); return; }
+  const janela = window.open("about:blank", "_blank");
+  const dataUrl = await fetchFotoCached(fileId);
+  if (!dataUrl) {
+    if (janela) janela.close();
+    alert("Não foi possível carregar o arquivo.");
+    return;
+  }
+  const blob = await (await fetch(dataUrl)).blob();
+  const url = URL.createObjectURL(blob);
+  if (janela) janela.location = url;
+}
 // Inicia o download de uma foto antecipadamente (ao passar o mouse / tocar no item),
 // para que já esteja em cache quando o modal abrir.
 function prefetchFoto(source) {
@@ -1964,15 +1981,14 @@ const handleSort = (key) => {
       </div>
     ) : (selectedFesta.url_atestado || selectedFesta.id_atestado_drive) ? (
       <div style={{display:'flex', flexDirection:'column', gap: 5}}>
-        {/* Segurança: só abre links http(s) — bloqueia javascript:/data: vindos da planilha */}
-        <a
-          href={/^https?:\/\//i.test((selectedFesta.url_atestado || "").trim()) ? selectedFesta.url_atestado.trim() : `https://drive.google.com/uc?id=${selectedFesta.id_atestado_drive}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{color: '#3b82f6', textDecoration: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4}}
+        {/* Segurança (N7/LGPD): atestado é PRIVADO no Drive — abre via getFoto autenticado */}
+        <button
+          type="button"
+          onClick={() => abrirArquivoDrive(selectedFesta.id_atestado_drive || selectedFesta.url_atestado)}
+          style={{background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#3b82f6', fontWeight: 600, fontSize: 'inherit', display: 'flex', alignItems: 'center', gap: 4}}
         >
           <FileText size={16}/> Abrir Atestado
-        </a>
+        </button>
       </div>
     ) : (
       <div style={{color: theme.textSecondary}}>Nenhum atestado anexado</div>

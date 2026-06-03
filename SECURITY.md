@@ -132,9 +132,17 @@ Já usa `noopener,noreferrer` no envio principal — manter esse padrão em qual
 6. **Rebuild + deploy do frontend** (Vercel) para o login-POST e o proxy de IA entrarem no ar.
 
 ## ⛔ Ainda em aberto (decisões suas)
-- **Autorização por cargo** no backend (item 2.5) — precisa de modelo de sessão/identidade real.
-- **xlsx@0.18.5** (item 4) — decisão de dependência.
-- Confirmar a finalidade das colunas `token`/`data_token` da aba usuarios (filtradas por precaução).
+- ✅ **Autorização por cargo** no backend (item 2.5) — RESOLVIDO (Fase 2, `ENFORCE_SESSION=true`).
+- ✅ **xlsx@0.18.5** (item 4) — RESOLVIDO (2026-06-03, SheetJS 0.20.3 oficial).
+- Colunas `token`/`data_token` da aba usuarios: **o código não as usa em nada** (só as filtra das
+  respostas por precaução) — podem ser apagadas da planilha manualmente quando quiser.
+
+## 🔁 Atualização 2026-06-03 (deploy backend @122)
+- ✅ **Senha padrão "123" eliminada:** o reset (botão de chave em Usuários) agora gera uma
+  **senha temporária aleatória** (10 caracteres, alfabeto sem ambíguos), devolvida UMA única vez
+  na resposta ao Dev — não vai para o log nem fica em texto puro em lugar nenhum.
+- ✅ **Atestados da piscina privados** (ver N7) — novos uploads sem link público; abertura via
+  `getFoto` autenticado. Pendente: rodar `privarAtestadosPiscina` no editor (após deploy Vercel).
 
 ---
 
@@ -188,10 +196,16 @@ Backend grava campos verbatim (`appendRow`/`setValues`); frontend exporta XLSX c
 `Vagas.jsx:140`, `Unidades.jsx:225`). Valor iniciando com `= + - @` vira fórmula no Excel/Sheets.
 - **Fix:** prefixar `'` (aspa simples) em strings que começam com `= + - @`, no backend (centralizado) e antes de exportar.
 
-### N7. Arquivos do Drive como `ANYONE_WITH_LINK`
-`appscript/Código.js:428, 668, 1473, 1737, 1772, 1793` — fotos, atestados médicos (piscina) e assinaturas
-ficam acessíveis por link a qualquer um que o obtenha.
-- **Fix:** manter privados e servir só via backend autenticado (padrão `getFoto` corrigido).
+### N7. Arquivos do Drive como `ANYONE_WITH_LINK` — 🟡 PARCIAL (2026-06-03, deploy @122)
+Fotos, atestados médicos (piscina) e assinaturas ficavam acessíveis por link a qualquer um que o obtenha.
+- ✅ **FEITO — atestados médicos (o mais sensível/LGPD):** novos atestados sobem **privados**
+  (sem `setSharing`); o frontend (`Piscina.jsx`) abre via `action=getFoto` autenticado (blob URL).
+- ⛔ **PENDENTE (você):** rodar **`privarAtestadosPiscina`** UMA vez no editor para privar os
+  atestados antigos — **somente APÓS** o deploy do frontend na Vercel (senão o botão antigo quebra).
+- 🟡 **MANTIDO público (decisão consciente):** fotos de entregas/festas/churrasqueira/compras e
+  fotos da piscina continuam `ANYONE_WITH_LINK` — os thumbnails do app dependem da URL pública do
+  Drive. Migrar tudo para `getFoto` é possível (padrão `DriveImage` da Piscina), mas é um refactor
+  maior em 5 telas. Assinaturas ficam em base64 na aba `ASSINATURA` (não no Drive).
 
 ### N8. URLs da planilha abertas sem validar o scheme — ✅ RESOLVIDO (2026-06-03)
 `Churrasqueira.jsx:2196`, `Festas.jsx:2057`, `Piscina.jsx:1947`, `Compras.jsx:1459` — `window.open(url)`/`<a href>`
@@ -213,8 +227,8 @@ Handlers em Encomendas/Festas/Churrasqueira/Piscina/Compras/Mudancas confiam só
 - **N11.** `vercel.json` sem cabeçalhos de segurança (CSP, X-Frame-Options, X-Content-Type-Options, HSTS, Referrer-Policy). Sem CSP, um XSS tem mais alcance + risco de clickjacking.
 - **N12.** `.gitignore` cobre só `*.local`; não cobre `.env`/`.env.*`. Hoje o segredo está em `.env.local` (ignorado, OK), mas um `.env` futuro seria commitado. Adicionar `.env`, `.env.*`, `!.env.example`.
 - **N13.** `console.log` com PII em `Moradores.jsx:323` (lista de vagas/moradores) e outros — remover do build de produção.
-- **N14.** Vazamento de detalhe de erro ao cliente: `getFoto` (`err.toString()`, linha 51) e `errRow.toString()` (504/549). Retornar mensagem genérica; logar detalhe só no servidor.
-- **N15.** Login GET ainda aceito (`Código.js:28-31`) coloca senha na URL/logs. Remover o ramo GET (POST já existe).
+- **N14.** ✅ RESOLVIDO — `getFoto` e ENTREGAS retornam mensagem genérica; `err.toString()` vai só para `console.error` (logs do servidor). Verificado em 2026-06-03.
+- **N15.** ✅ RESOLVIDO — o ramo GET de login não existe mais no `doGet`; login é exclusivamente via POST (senha no corpo). Verificado em 2026-06-03.
 - **N16.** ✅ RESOLVIDO (deploy @117) — migração de hash concluída pelo usuário, coluna `senha` apagada, e o fallback de texto puro removido do `handleLogin_`. Login agora exige `senha_hash`.
 
 ## ✅ Pontos positivos confirmados nesta auditoria
