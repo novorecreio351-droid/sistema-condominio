@@ -142,6 +142,33 @@ Já usa `noopener,noreferrer` no envio principal — manter esse padrão em qual
   **`removerColunasLegadasUsuarios`** criada (Executar no editor, uma vez) — remove `token`,
   `data_token` e a coluna `senha`/`password` se ainda existir.
 
+# Auditoria 2026-06-03 (final do dia) — leitura horizontal por cargo
+
+Re-auditoria completa (frontend + backend) após todos os fixes do dia. Frontend: **nenhum achado**
+(XSS, vazamentos, window.open, refactors do dia — tudo limpo). Backend: 2 achados HIGH de
+**controle de acesso horizontal**, ambos corrigidos no deploy **@124**:
+
+### A1. doGet permitia a qualquer cargo (exceto Conselheiro) ler QUALQUER aba — ✅ RESOLVIDO (@124)
+Um Porteiro autenticado podia ler `ASSINATURA` (assinaturas base64), `AUDITORIA`, `COMPRAS`/`NOTAS`,
+`PISCINA` (dados médicos) e o CPF/RG de todas as abas — nada disso é necessário à portaria.
+- **Fix:** `LEITURA_POR_CARGO` + `podeLer_()` — Porteiro lê somente as abas que Dashboard e
+  Encomendas consomem (`UNIDADES, MORADORES, ENTREGAS, ENTREGAS_FOTO, AGENDAMENTOS, FESTAS,
+  CHURRASQUEIRA, MUDANCAS, log`); Conselheiro segue sem leitura; administrativos leem tudo.
+- **Fix extra:** `COLUNAS_OCULTAS_PORTEIRO` — `cpf`, `rg` e `assinatura_base64` nunca são
+  enviados ao Porteiro em nenhuma listagem (Dashboard só conta registros; Encomendas usa
+  nome/telefone — verificado que nenhuma tela do Porteiro usa esses campos).
+
+### A2. getFoto sem autorização por cargo — Porteiro podia baixar atestados médicos — ✅ RESOLVIDO (@124)
+`getFoto` exigia apenas sessão válida; qualquer cargo podia baixar qualquer arquivo das pastas
+permitidas, incluindo atestados médicos da piscina (LGPD).
+- **Fix:** `PASTAS_POR_CARGO` — Porteiro só acessa as 2 pastas de fotos de entregas; Conselheiro
+  nenhuma; administrativos todas. Validação feita sobre a pasta-pai real do arquivo.
+
+Verificado e sem achados: ordem de dispatch do doPost, `podeEscrever_` (sem escalada de escrita),
+HMAC/sessão (comparação constante, expiração, cargo revalidado da planilha), senha temporária
+(entropia ok, fora dos logs), login só-hash, deleções por id (gated por cargo, fileId vem da
+planilha), listagem pré-login de usuarios (allow-list de 4 campos, por design).
+
 ## 🔁 Atualização 2026-06-03 (deploy backend @122)
 - ✅ **Senha padrão "123" eliminada:** o reset (botão de chave em Usuários) agora gera uma
   **senha temporária aleatória** (10 caracteres, alfabeto sem ambíguos), devolvida UMA única vez
