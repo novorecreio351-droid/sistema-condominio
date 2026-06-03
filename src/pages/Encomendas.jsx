@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "../App";
 import { sessionParam, getSessionToken } from "../auth/session";
+import { postBackend } from "../api/backend";
 
 const API_URL = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8epZMJIhCmapSOxyTegLMSEGZ2jBMGIxQ4cJb4a23oveAAaW/exec";
 const TOKEN = import.meta.env.VITE_SHEETS_TOKEN;
@@ -655,25 +656,21 @@ export default function Encomendas({ user }) {
     setEncomendas(updated);
 
     try {
-      await fetch(API_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({
-          token: TOKEN,
-          session: getSessionToken(),
-          action: "edit",
-          sheet: "ENTREGAS",
-          id: serverId,
-          user: user?.nome || "Sistema",
-          data: {
-            status: novoStatus,
-            armazenado_local: local,
-            armazenado_por: por,
-            armazenado_data: dataArmazenado
-          }
-        })
+      const res = await postBackend(API_URL, {
+        token: TOKEN,
+        session: getSessionToken(),
+        action: "edit",
+        sheet: "ENTREGAS",
+        id: serverId,
+        user: user?.nome || "Sistema",
+        data: {
+          status: novoStatus,
+          armazenado_local: local,
+          armazenado_por: por,
+          armazenado_data: dataArmazenado
+        }
       });
+      if (res && res.success === false) { await fetchData(); return; }
 
       setShowArmazenarModal(false);
       setArmazenarItem(null);
@@ -768,36 +765,34 @@ export default function Encomendas({ user }) {
           }]
         : [];
 
-      await fetch(API_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({
-          token: TOKEN,
-          session: getSessionToken(),
-          action: "edit",
-          sheet: "ENTREGAS",
-          id: serverId,
-          user: user?.nome || "Sistema",
-          data: {
-            // Preserva os dados originais (o backend sobrescreve a linha toda)
-            id_unidade: getCell(deliveryItem, "id_unidade") || "",
-            id_morador: getCell(deliveryItem, "id_morador") || "",
-            nome: getCell(deliveryItem, "nome") || "",
-            telefone: getCell(deliveryItem, "telefone") || "",
-            numero_fiscal: getCell(deliveryItem, "numero_fiscal") || "",
-            transportadora: getCell(deliveryItem, "transportadora") || "",
-            ident_interna: getCell(deliveryItem, "ident_interna") || "",
-            // Dados da baixa/entrega
-            status: novoStatus,
-            data_saida: horarioSaida,
-            entregue_por: user?.nome || "Sistema",
-            nome_morador: nomeMorador,
-            cod_entrega: codigoInserido,   // COD_ENTREGA (coluna M)
-            imagens: imagensBaixa          // foto -> pasta + NOME_ARQUIVO/URL_DRIVE/FILE_ID
-          }
-        })
+      // Lê a resposta: o backend valida o código de entrega e pode recusar a baixa
+      // ("Código de entrega não confere") — com no-cors esse erro era invisível.
+      const res = await postBackend(API_URL, {
+        token: TOKEN,
+        session: getSessionToken(),
+        action: "edit",
+        sheet: "ENTREGAS",
+        id: serverId,
+        user: user?.nome || "Sistema",
+        data: {
+          // Preserva os dados originais (o backend sobrescreve a linha toda)
+          id_unidade: getCell(deliveryItem, "id_unidade") || "",
+          id_morador: getCell(deliveryItem, "id_morador") || "",
+          nome: getCell(deliveryItem, "nome") || "",
+          telefone: getCell(deliveryItem, "telefone") || "",
+          numero_fiscal: getCell(deliveryItem, "numero_fiscal") || "",
+          transportadora: getCell(deliveryItem, "transportadora") || "",
+          ident_interna: getCell(deliveryItem, "ident_interna") || "",
+          // Dados da baixa/entrega
+          status: novoStatus,
+          data_saida: horarioSaida,
+          entregue_por: user?.nome || "Sistema",
+          nome_morador: nomeMorador,
+          cod_entrega: codigoInserido,   // COD_ENTREGA (coluna M)
+          imagens: imagensBaixa          // foto -> pasta + NOME_ARQUIVO/URL_DRIVE/FILE_ID
+        }
       });
+      if (res && res.success === false) return; // mantém o modal aberto p/ corrigir o código
 
       console.log("Entrega confirmada com sucesso");
       setShowConfirmDeliveryModal(false);

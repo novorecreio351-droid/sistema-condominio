@@ -15,6 +15,7 @@ import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { sessionParam, getSessionToken } from "../auth/session";
 import { DriveImage, abrirArquivoDrive } from "../components/DriveImage";
+import { postBackend } from "../api/backend";
 
 const API_URL = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8epZMJIhCmapSOxyTegLMSEGZ2jBMGIxQ4cJb4a23oveAAaW/exec";
 const TOKEN = import.meta.env.VITE_SHEETS_TOKEN;
@@ -864,17 +865,14 @@ const handleDeleteImage = async (uploadId) => {
 
   try {
     // Não precisamos extrair o match aqui, o Script vai buscar na Coluna E da planilha
-    await fetch(API_URL, {
-      method: "POST",
-      mode: "no-cors", 
-      body: JSON.stringify({
-        token: TOKEN,
-        session: getSessionToken(),
-        action: "delete",
-        sheet: "UPLOADS_FESTAS",
-        id: uploadId.toString()
-      })
+    const res = await postBackend(API_URL, {
+      token: TOKEN,
+      session: getSessionToken(),
+      action: "delete",
+      sheet: "UPLOADS_FESTAS",
+      id: uploadId.toString()
     });
+    if (res && res.success === false) { setLoadingGlobal(false); return; }
 
     // O tempo de espera para o Google processar
     setTimeout(() => {

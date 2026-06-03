@@ -9,6 +9,7 @@ import {
 import { useTheme } from "../App";
 import { sessionParam, getSessionToken } from "../auth/session";
 import { DriveImage, abrirArquivoDrive } from "../components/DriveImage";
+import { postBackend } from "../api/backend";
 
 // Bibliotecas para exportação
 import { jsPDF } from "jspdf";
@@ -239,7 +240,8 @@ const [tempProduto, setTempProduto] = useState({ nome: "", qtd: 1, valor: "" });
       arquivosManter: arquivosManter 
     };
 
-    await fetch(API_URL, { method: "POST", mode: "no-cors", body: JSON.stringify(payload) });
+    const res = await postBackend(API_URL, payload);
+    if (res && res.success === false) { setLoading(false); return; }
 
     // Reset de estados após sucesso
     setShowModal(false);

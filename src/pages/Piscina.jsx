@@ -22,6 +22,7 @@ const TOKEN = import.meta.env.VITE_SHEETS_TOKEN;
 // Exibição de imagens/arquivos do Drive via backend autenticado (getFoto):
 // componente compartilhado — ver src/components/DriveImage.jsx.
 import { DriveImage, fetchFotoCached, prefetchFoto, extrairFileIdDrive, abrirArquivoDrive } from "../components/DriveImage";
+import { postBackend } from "../api/backend";
 
 // --- ESTILOS ---
 const btnWhite = { border: '1px solid', padding: '10px 16px', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' };
@@ -644,17 +645,14 @@ const handleDeleteImage = async (uploadId) => {
 
   try {
     // Não precisamos extrair o match aqui, o Script vai buscar na Coluna E da planilha
-    await fetch(API_URL, {
-      method: "POST",
-      mode: "no-cors", 
-      body: JSON.stringify({
-        token: TOKEN,
-        session: getSessionToken(),
-        action: "delete",
-        sheet: "UPLOADS_CHURRASQUEIRA",
-        id: uploadId.toString()
-      })
+    const res = await postBackend(API_URL, {
+      token: TOKEN,
+      session: getSessionToken(),
+      action: "delete",
+      sheet: "UPLOADS_CHURRASQUEIRA",
+      id: uploadId.toString()
     });
+    if (res && res.success === false) { setLoadingGlobal(false); return; }
 
     // O tempo de espera para o Google processar
     setTimeout(() => {
@@ -729,12 +727,8 @@ const handleSave = async () => {
   };
 
   try {
-    await fetch(API_URL, {
-      method: "POST",
-      mode: "no-cors", 
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify(payload),
-    });
+    const res = await postBackend(API_URL, payload);
+    if (res && res.success === false) { setLoadingGlobal(false); return; }
 
     setTimeout(async () => {
       setShowModal(false);

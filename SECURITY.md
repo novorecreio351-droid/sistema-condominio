@@ -71,10 +71,14 @@ não está no npm (a SheetJS distribui pela CDN própria).
 - **Feito:** trocado para a distribuição oficial `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`
   (mesmo nome de pacote, imports inalterados). `npm audit` agora reporta 0 vulnerabilidades; build validado.
 
-### 5. Falha de gravação silenciosa (`mode: "no-cors"`)
-Várias páginas gravam com `no-cors`, que impede ler a resposta — erros do servidor passam
-despercebidos. (No fluxo de Encomendas isso já foi tratado.) Vale padronizar a leitura da
-resposta nas demais telas para detectar falhas reais.
+### 5. Falha de gravação silenciosa (`mode: "no-cors"`) — ✅ RESOLVIDO (2026-06-03)
+Várias páginas gravavam com `no-cors`, que impede ler a resposta — erros do servidor passavam
+despercebidos (ex.: sessão expirada, código de entrega errado).
+- **Feito:** helper compartilhado `src/api/backend.js` (`postBackend`) lê a resposta e alerta o
+  usuário quando o backend recusa (`success:false`); falha de leitura por CORS/rede segue em modo
+  otimista (comportamento do antigo no-cors). Aplicado em Agendamento (3), Compras, Festas,
+  Churrasqueira, Piscina (2) e Encomendas (2 — a baixa com código errado agora avisa em vez de
+  fingir sucesso). Zero `mode: "no-cors"` restante no código.
 
 ---
 
@@ -134,8 +138,9 @@ Já usa `noopener,noreferrer` no envio principal — manter esse padrão em qual
 ## ⛔ Ainda em aberto (decisões suas)
 - ✅ **Autorização por cargo** no backend (item 2.5) — RESOLVIDO (Fase 2, `ENFORCE_SESSION=true`).
 - ✅ **xlsx@0.18.5** (item 4) — RESOLVIDO (2026-06-03, SheetJS 0.20.3 oficial).
-- Colunas `token`/`data_token` da aba usuarios: **o código não as usa em nada** (só as filtra das
-  respostas por precaução) — podem ser apagadas da planilha manualmente quando quiser.
+- Colunas `token`/`data_token` da aba usuarios: **o código não as usa em nada**. Função
+  **`removerColunasLegadasUsuarios`** criada (Executar no editor, uma vez) — remove `token`,
+  `data_token` e a coluna `senha`/`password` se ainda existir.
 
 ## 🔁 Atualização 2026-06-03 (deploy backend @122)
 - ✅ **Senha padrão "123" eliminada:** o reset (botão de chave em Usuários) agora gera uma

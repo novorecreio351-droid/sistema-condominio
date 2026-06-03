@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "../App";
 import { sessionParam, getSessionToken } from "../auth/session";
+import { postBackend } from "../api/backend";
 
 const API_URL = "https://script.google.com/macros/s/AKfycbxtxUEIoaSNfqKTmton8epZMJIhCmapSOxyTegLMSEGZ2jBMGIxQ4cJb4a23oveAAaW/exec";
 const TOKEN = import.meta.env.VITE_SHEETS_TOKEN;
@@ -197,21 +198,17 @@ export default function Agendamento({ user }) {
       return agora > horaFim;
     });
 
+    // Atualização em segundo plano: lê a resposta (sem no-cors), mas sem alertar o usuário.
     await Promise.all(
       paraAtualizar.map(ag =>
-        fetch(API_URL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify({
-            token: TOKEN,
-            session: getSessionToken(),
-            action: "edit",
-            sheet: "AGENDAMENTOS",
-            id: ag.id.toString(),
-            data: { ...ag, status: "Realizado" },
-          }),
-        })
+        postBackend(API_URL, {
+          token: TOKEN,
+          session: getSessionToken(),
+          action: "edit",
+          sheet: "AGENDAMENTOS",
+          id: ag.id.toString(),
+          data: { ...ag, status: "Realizado" },
+        }, { silencioso: true })
       )
     );
 
@@ -390,12 +387,8 @@ export default function Agendamento({ user }) {
       },
     };
 
-    await fetch(API_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify(payload),
-    });
+    const res = await postBackend(API_URL, payload);
+    if (res && res.success === false) { setLoadingGlobal(false); return; }
 
     setTimeout(async () => {
       setShowModal(false);
@@ -407,12 +400,8 @@ export default function Agendamento({ user }) {
   const handleDelete = async (id) => {
     if (!confirm("Excluir este agendamento?")) return;
     setLoadingGlobal(true);
-    await fetch(API_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ token: TOKEN, session: getSessionToken(), action: "delete", sheet: "AGENDAMENTOS", id: id.toString() }),
-    });
+    const res = await postBackend(API_URL, { token: TOKEN, session: getSessionToken(), action: "delete", sheet: "AGENDAMENTOS", id: id.toString() });
+    if (res && res.success === false) { setLoadingGlobal(false); return; }
     setTimeout(async () => {
       setShowModal(false);
       await fetchData();
