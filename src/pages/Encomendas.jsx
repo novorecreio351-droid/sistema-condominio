@@ -2,10 +2,10 @@
  
 import React, { useState, useEffect, useRef } from "react";
 import { 
-  Package, Search, Plus, Edit2, Trash2, X, Loader2, 
-  MoreVertical, Eye, Box, CheckCircle2, AlertCircle, ChevronLeft, ChevronRight, 
+  Package, Search, Plus, Edit2, Trash2, X, Loader2,
+  MoreVertical, Eye, Box, CheckCircle2, AlertCircle, ChevronLeft, ChevronRight,
   User, Paperclip, Truck, History, Calendar, LayoutDashboard,
-  ChevronDown, UploadCloud, Camera, MapPin, Archive
+  ChevronDown, UploadCloud, Camera, MapPin, Archive, ZoomIn, ZoomOut
 } from "lucide-react";
 import { useTheme } from "../App";
 import { sessionParam, getSessionToken } from "../auth/session";
@@ -49,6 +49,115 @@ const spinnerKeyframeName = 'encomendas-spin';
 const spinnerAnimation = { animation: `${spinnerKeyframeName} 0.85s linear infinite` };
 const buttonSpinnerStyle = { ...spinnerAnimation, marginRight: '8px', display: 'inline-block' };
 
+// Lightbox de foto em tela cheia: zoom por pinça (touch), duplo-toque/duplo-clique,
+// roda do mouse e botões +/−; arrasto quando ampliada; navegação entre fotos;
+// fecha pelo X ou clicando fora da imagem.
+function PhotoLightbox({ src, loading, onClose, onPrev, onNext, count, index }) {
+  const [scale, setScale] = useState(1);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const gesto = useRef({ mode: null, startDist: 0, startScale: 1, startX: 0, startY: 0, origX: 0, origY: 0, lastTap: 0 });
+
+  // Trocou de foto → reseta zoom/posição
+  useEffect(() => { setScale(1); setPos({ x: 0, y: 0 }); }, [src]);
+
+  const aplicar = (s) => {
+    const v = Math.min(5, Math.max(1, s));
+    setScale(v);
+    if (v <= 1) setPos({ x: 0, y: 0 });
+  };
+  const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+
+  const onTouchStart = (e) => {
+    const g = gesto.current;
+    if (e.touches.length === 2) {
+      g.mode = "pinch";
+      g.startDist = dist(e.touches);
+      g.startScale = scale;
+    } else if (e.touches.length === 1) {
+      const t = e.touches[0];
+      const agora = Date.now();
+      if (agora - g.lastTap < 300) { // duplo-toque alterna 1x ↔ 2.5x
+        aplicar(scale > 1 ? 1 : 2.5);
+        g.lastTap = 0; g.mode = null;
+        return;
+      }
+      g.lastTap = agora;
+      g.mode = "pan";
+      g.startX = t.clientX; g.startY = t.clientY;
+      g.origX = pos.x; g.origY = pos.y;
+    }
+  };
+  const onTouchMove = (e) => {
+    const g = gesto.current;
+    if (g.mode === "pinch" && e.touches.length === 2) {
+      aplicar(g.startScale * (dist(e.touches) / g.startDist));
+    } else if (g.mode === "pan" && e.touches.length === 1 && scale > 1) {
+      const t = e.touches[0];
+      setPos({ x: g.origX + (t.clientX - g.startX), y: g.origY + (t.clientY - g.startY) });
+    }
+  };
+  const onTouchEnd = () => { gesto.current.mode = null; };
+
+  // Desktop: roda do mouse dá zoom; arrastar move quando ampliada
+  const onWheel = (e) => { aplicar(scale * (e.deltaY < 0 ? 1.15 : 1 / 1.15)); };
+  const onMouseDown = (e) => {
+    if (scale <= 1) return;
+    const g = gesto.current;
+    g.mode = "drag"; g.startX = e.clientX; g.startY = e.clientY; g.origX = pos.x; g.origY = pos.y;
+  };
+  const onMouseMove = (e) => {
+    const g = gesto.current;
+    if (g.mode !== "drag") return;
+    setPos({ x: g.origX + (e.clientX - g.startX), y: g.origY + (e.clientY - g.startY) });
+  };
+  const onMouseUp = () => { gesto.current.mode = null; };
+
+  const btn = { width: 42, height: 42, borderRadius: '50%', border: 'none', backgroundColor: 'rgba(15,23,42,0.75)', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)', fontSize: 22 };
+
+  return (
+    <div
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: 'fixed', inset: 0, zIndex: 3000, backgroundColor: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+    >
+      <div style={{ position: 'fixed', top: 14, right: 14, display: 'flex', gap: 10, zIndex: 3002 }}>
+        <button type="button" style={btn} onClick={() => aplicar(scale / 1.4)} title="Diminuir zoom"><ZoomOut size={20} /></button>
+        <button type="button" style={btn} onClick={() => aplicar(scale * 1.4)} title="Aumentar zoom"><ZoomIn size={20} /></button>
+        <button type="button" style={{ ...btn, backgroundColor: 'rgba(239,68,68,0.85)' }} onClick={onClose} title="Fechar"><X size={20} /></button>
+      </div>
+
+      {count > 1 && (
+        <>
+          <button type="button" style={{ ...btn, position: 'fixed', left: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 3002 }} onClick={onPrev}>‹</button>
+          <button type="button" style={{ ...btn, position: 'fixed', right: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 3002 }} onClick={onNext}>›</button>
+          <div style={{ position: 'fixed', bottom: 16, left: '50%', transform: 'translateX(-50%)', color: 'white', fontSize: 13, backgroundColor: 'rgba(15,23,42,0.7)', padding: '4px 12px', borderRadius: 14, zIndex: 3002 }}>{index + 1} / {count}</div>
+        </>
+      )}
+
+      {/* Palco da imagem — touchAction:none entrega os gestos para os handlers */}
+      <div
+        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+        onWheel={onWheel} onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}
+        onDoubleClick={() => aplicar(scale > 1 ? 1 : 2.5)}
+        style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'none', overflow: 'hidden', cursor: scale > 1 ? 'grab' : 'default' }}
+      >
+        {loading ? (
+          <Loader2 style={spinnerAnimation} size={34} color="white" />
+        ) : src ? (
+          <img
+            src={src}
+            alt="Foto da encomenda"
+            draggable={false}
+            style={{ maxWidth: '92vw', maxHeight: '86vh', transform: `translate(${pos.x}px, ${pos.y}px) scale(${scale})`, transition: gesto.current.mode ? 'none' : 'transform 0.15s ease', userSelect: 'none' }}
+          />
+        ) : (
+          <span style={{ color: 'white' }}>Não foi possível carregar a foto</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Encomendas({ user }) {
   const { theme } = useTheme();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -73,6 +182,7 @@ export default function Encomendas({ user }) {
   const [selectedDetails, setSelectedDetails] = useState(null);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
   const [photoSrc, setPhotoSrc] = useState(null);
+  const [photoZoomOpen, setPhotoZoomOpen] = useState(false); // lightbox da foto
   const [photoLoading, setPhotoLoading] = useState(false);
   const [showConfirmDeliveryModal, setShowConfirmDeliveryModal] = useState(false);
   const [confirmDeliveryCode, setConfirmDeliveryCode] = useState("");
@@ -1495,6 +1605,17 @@ export default function Encomendas({ user }) {
 
       {showViewDetails && selectedDetails && (
         <div style={modalOverlay}>
+          {photoZoomOpen && (
+            <PhotoLightbox
+              src={photoSrc}
+              loading={photoLoading}
+              count={selectedPhotoUrls.length}
+              index={selectedPhotoIndex}
+              onClose={() => setPhotoZoomOpen(false)}
+              onPrev={() => setSelectedPhotoIndex((prev) => (prev === 0 ? selectedPhotoUrls.length - 1 : prev - 1))}
+              onNext={() => setSelectedPhotoIndex((prev) => (prev === selectedPhotoUrls.length - 1 ? 0 : prev + 1))}
+            />
+          )}
           <div className="enc-modal" style={{ backgroundColor: theme.bgCard, color: theme.text, maxWidth: '920px', width: '95%' }}>
             <div className="enc-modal-header" style={{ borderColor: theme.border }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
@@ -1506,7 +1627,7 @@ export default function Encomendas({ user }) {
                   <div style={{ fontSize: '12px', color: theme.textSecondary, marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getCell(selectedDetails, 'NOME') || 'Informações completas da entrega'}</div>
                 </div>
               </div>
-              <button type="button" className="enc-close-btn" style={{ borderColor: theme.border, color: theme.textSecondary }} onClick={() => { setShowViewDetails(false); setSelectedDetails(null); }}>
+              <button type="button" className="enc-close-btn" style={{ borderColor: theme.border, color: theme.textSecondary }} onClick={() => { setShowViewDetails(false); setSelectedDetails(null); setPhotoZoomOpen(false); }}>
                 <X size={18} />
               </button>
             </div>
@@ -1530,7 +1651,9 @@ export default function Encomendas({ user }) {
                           className="enc-photo-img"
                           src={photoSrc}
                           alt="Encomenda"
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          title="Toque para ampliar"
+                          onClick={() => setPhotoZoomOpen(true)}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'zoom-in' }}
                         />
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', color: theme.textSecondary }}>
