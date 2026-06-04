@@ -24,20 +24,28 @@ export function extrairFileIdDrive(source) {
   return s; // já é um id simples
 }
 
+// Tamanho padrão das miniaturas exibidas no app (px no maior lado).
+// O backend usa &size=N para devolver a miniatura redimensionada do Drive,
+// 10-20x menor que o arquivo original — carregamento muito mais rápido.
+const TAMANHO_MINIATURA = 640;
+
 // Cache em nível de módulo (compartilhado por todas as telas):
 // uma vez baixada, a foto fica em memória — reabrir modal/re-render é instantâneo.
 // Guarda Promises para deduplicar buscas simultâneas do mesmo arquivo.
+// A chave inclui o tamanho (miniatura e original são entradas separadas).
 const fotoCache = new Map();
-export function fetchFotoCached(fileId) {
+export function fetchFotoCached(fileId, size) {
   if (!fileId) return Promise.resolve("");
-  if (fotoCache.has(fileId)) return fotoCache.get(fileId);
-  const p = fetch(`${API_URL}?token=${TOKEN}&action=getFoto&fileId=${encodeURIComponent(fileId)}${sessionParam()}`)
+  const chave = size ? `${fileId}@${size}` : fileId;
+  if (fotoCache.has(chave)) return fotoCache.get(chave);
+  const paramSize = size ? `&size=${size}` : "";
+  const p = fetch(`${API_URL}?token=${TOKEN}&action=getFoto&fileId=${encodeURIComponent(fileId)}${paramSize}${sessionParam()}`)
     .then((r) => r.json())
     .then((d) => (d && d.success && d.base64 ? `data:${d.contentType || "image/jpeg"};base64,${d.base64}` : ""))
     .catch(() => "");
   // Se falhar/voltar vazio, descarta do cache para permitir nova tentativa depois.
-  p.then((src) => { if (!src) fotoCache.delete(fileId); });
-  fotoCache.set(fileId, p);
+  p.then((src) => { if (!src) fotoCache.delete(chave); });
+  fotoCache.set(chave, p);
   return p;
 }
 
@@ -45,7 +53,7 @@ export function fetchFotoCached(fileId) {
 // para que já esteja em cache quando o modal abrir.
 export function prefetchFoto(source) {
   const fileId = source && source.toString().startsWith("data:") ? "" : extrairFileIdDrive(source);
-  if (fileId) fetchFotoCached(fileId);
+  if (fileId) fetchFotoCached(fileId, TAMANHO_MINIATURA);
 }
 
 // Abre um arquivo do Drive (foto, PDF, atestado...) buscando os bytes pelo backend
@@ -70,15 +78,13 @@ export function DriveImage({ source, localSrc, alt = "", style }) {
   // src imediato (sem estado): preview local em base64 ou um data: URL já pronto.
   const directSrc = localSrc || (source && source.toString().startsWith("data:") ? source.toString() : "");
   const fileId = directSrc ? "" : extrairFileIdDrive(source);
-  // Se a foto já está em cache resolvido, mostra na hora (sem flash de placeholder).
-  const cached = fileId && fotoCache.has(fileId) ? fotoCache.get(fileId) : null;
-  const [fetchedSrc, setFetchedSrc] = useState(typeof cached === "string" ? cached : "");
+  const [fetchedSrc, setFetchedSrc] = useState("");
   useEffect(() => {
     if (!fileId) return; // nada a buscar; o directSrc/placeholder cuida da exibição
     let cancelled = false;
-    // Só usa como <img> se for imagem — PDF e afins ficam no placeholder
-    // (o elemento de fundo da tela, ex.: ícone "VER ARQUIVO", continua visível).
-    fetchFotoCached(fileId).then((src) => {
+    // Miniatura (TAMANHO_MINIATURA) — só usa como <img> se for imagem; PDF e afins
+    // ficam no placeholder (o fundo da tela, ex.: ícone "VER ARQUIVO", continua visível).
+    fetchFotoCached(fileId, TAMANHO_MINIATURA).then((src) => {
       if (!cancelled && src && src.startsWith("data:image")) setFetchedSrc(src);
     });
     return () => { cancelled = true; };

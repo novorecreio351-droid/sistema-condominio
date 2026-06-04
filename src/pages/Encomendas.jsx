@@ -49,6 +49,38 @@ const spinnerKeyframeName = 'encomendas-spin';
 const spinnerAnimation = { animation: `${spinnerKeyframeName} 0.85s linear infinite` };
 const buttonSpinnerStyle = { ...spinnerAnimation, marginRight: '8px', display: 'inline-block' };
 
+// Comprime uma imagem no navegador antes do upload (máx. 1600px no maior lado,
+// JPEG qualidade 0.8). Fotos de câmera caem de vários MB para ~200-400KB —
+// upload e carregamento posterior ficam muito mais rápidos.
+// Em caso de erro, devolve o arquivo original como dataURL (comportamento antigo).
+function comprimirImagem(file, maxLado = 1600, qualidade = 0.8) {
+  return new Promise((resolve) => {
+    const fallback = () => {
+      const r = new FileReader();
+      r.onloadend = () => resolve(r.result);
+      r.readAsDataURL(file);
+    };
+    try {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        try {
+          const ratio = Math.min(1, maxLado / Math.max(img.width, img.height));
+          const w = Math.round(img.width * ratio);
+          const h = Math.round(img.height * ratio);
+          const canvas = document.createElement("canvas");
+          canvas.width = w; canvas.height = h;
+          canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL("image/jpeg", qualidade));
+        } catch { fallback(); }
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); fallback(); };
+      img.src = url;
+    } catch { fallback(); }
+  });
+}
+
 // Lightbox de foto em tela cheia: zoom por pinça (touch), duplo-toque/duplo-clique,
 // roda do mouse e botões +/−; arrasto quando ampliada; navegação entre fotos;
 // fecha pelo X ou clicando fora da imagem.
@@ -491,7 +523,9 @@ export default function Encomendas({ user }) {
     const cache = photoCacheRef.current;
     if (cache.has(fileId)) return cache.get(fileId);
     try {
-      const d = await fetch(`${API_URL}?token=${TOKEN}&action=getFoto&fileId=${encodeURIComponent(fileId)}${sessionParam()}`).then((r) => r.json());
+      // &size=1600: o backend devolve a miniatura redimensionada do Drive
+      // (10-20x menor que a foto original de câmera) — suficiente p/ tela e zoom.
+      const d = await fetch(`${API_URL}?token=${TOKEN}&action=getFoto&fileId=${encodeURIComponent(fileId)}&size=1600${sessionParam()}`).then((r) => r.json());
       const src = d && d.success && d.base64 ? `data:${d.contentType || "image/jpeg"};base64,${d.base64}` : null;
       if (src) cache.set(fileId, src);
       return src;
@@ -570,10 +604,9 @@ export default function Encomendas({ user }) {
     const files = Array.from(e.target.files || []).filter(arquivoValido);
     if (files.length === 0) { e.target.value = ""; return; }
 
-    Promise.all(files.map(file => new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve({ src: reader.result, name: file.name });
-      reader.readAsDataURL(file);
+    Promise.all(files.map(async (file) => ({
+      src: await comprimirImagem(file), // comprime antes de subir
+      name: file.name
     }))).then((images) => {
       setFormData((prev) => ({
         ...prev,
@@ -721,11 +754,7 @@ export default function Encomendas({ user }) {
 
     const file = files[0];
     if (!file || !arquivoValido(file)) { e.target.value = ""; return; }
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setDeliveryPhotoBase64(reader.result);
-    };
-    reader.readAsDataURL(file);
+    comprimirImagem(file).then(setDeliveryPhotoBase64); // comprime antes de subir
     e.target.value = "";
   };
 
