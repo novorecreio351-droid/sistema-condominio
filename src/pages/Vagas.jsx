@@ -427,7 +427,7 @@ const btnWhite = {
   const blocosDisponiveis = ["Todos", ...new Set(unidades.map(u => u.bloco.toString()))].sort();
 
   return (
-    <div style={pageContainer}>
+    <div style={{...pageContainer, paddingTop: isMobile ? '60px' : '20px'}}>
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .animate-spin { animation: spin 1s linear infinite; display: inline-block; }
@@ -910,7 +910,7 @@ const btnWhite = {
 
       {showAddTagModal && (
           <div style={{...modalOverlay, zIndex: 3000}}>
-              <div style={{...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth: '400px'}}>
+              <div style={{...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth: '400px', maxHeight: '90vh', overflowY: 'auto'}}>
                 <div style={modalHeader}><h3>{tagFormData.id ? "Editar TAG" : "Solicitar TAG"}</h3><X size={20} cursor="pointer" onClick={() => setShowAddTagModal(false)} /></div>
                 <div style={{display:'flex', flexDirection:'column', gap:'15px'}}>
                     <div>
@@ -944,10 +944,10 @@ const btnWhite = {
 
       {showModal && (
         <div style={modalOverlay}>
-          <div style={{...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth: '550px'}}>
+          <div style={{...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth: '550px', maxHeight: '90vh', overflowY: 'auto'}}>
             <div style={modalHeader}><h3 style={{margin:0}}>{modalType === "add" ? "Vincular Veículos" : "Editar Vaga"}</h3><X size={20} style={{ cursor: 'pointer' }} onClick={() => setShowModal(false)} /></div>
-            <div style={formGrid}>
-              <div style={{gridColumn: 'span 2'}}>
+            <div style={{...formGrid, gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr'}}>
+              <div style={{gridColumn: isMobile ? 'span 1' : 'span 2'}}>
                 <label style={labelStyle}>Unidade Responsável</label>
                 <select style={{...selectStyle, width: '100%', backgroundColor: theme.bg, color: theme.text, borderColor: theme.border}} value={formData.id_unidade} onChange={e => setFormData({...formData, id_unidade: e.target.value})}>
                   <option value="">Selecione...</option>
@@ -986,7 +986,7 @@ const btnWhite = {
    </div>
 )}
               </div>
-              <div style={{gridColumn: 'span 2'}}><label style={labelStyle}>Observação</label><textarea style={{...selectStyle, width:'100%', height:'70px', backgroundColor: theme.bg, color: theme.text, borderColor: theme.border}} value={formData.observacoes} onChange={e => setFormData({...formData, observacoes: e.target.value})} /></div>
+              <div style={{gridColumn: isMobile ? 'span 1' : 'span 2'}}><label style={labelStyle}>Observação</label><textarea style={{...selectStyle, width:'100%', height:'70px', backgroundColor: theme.bg, color: theme.text, borderColor: theme.border}} value={formData.observacoes} onChange={e => setFormData({...formData, observacoes: e.target.value})} /></div>
             </div>
             <div style={modalFooter}><button style={btnNew} onClick={handleSave}>Salvar Registro</button></div>
           </div>
@@ -995,7 +995,7 @@ const btnWhite = {
 
       {showViewModal && selectedVaga && (
         <div style={modalOverlay}>
-          <div style={{...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth:'400px'}}>
+          <div style={{...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth:'400px', maxHeight: '90vh', overflowY: 'auto'}}>
             <div style={modalHeader}><h3>Informações do Veículo</h3><X onClick={() => setShowViewModal(false)} cursor="pointer"/></div>
             <div style={{display:'flex', flexDirection:'column', gap:'12px'}}>
                <div style={{...viewBox, backgroundColor: theme.bg, borderColor: theme.border}}><strong>Carro:</strong> {selectedVaga.modelo_carro || "N/A"} ({selectedVaga.placa_carro || "S/P"})</div>

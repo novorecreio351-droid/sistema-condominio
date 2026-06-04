@@ -370,7 +370,7 @@ const badgeDependente = { backgroundColor: '#f1f5f9', color: '#64748b', padding:
 const badgeNaoMorador = { backgroundColor: '#fef2f2', color: '#dc2626', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', border: '1px solid #dc2626' };
 
   return (
-    <div style={pageContainer}>
+    <div style={{...pageContainer, paddingTop: isMobile ? '60px' : '20px'}}>
       <style>{`
         .filter-pill { padding: 6px 12px; border-radius: 8px; border: 1px solid ${theme.border}; background: ${theme.mainBg}; cursor: pointer; font-size: 12px; font-weight: 500; color: ${theme.textSecondary}; transition: 0.2s; }
         .filter-pill.active { background: #3b82f6; color: white; border-color: #3b82f6; }
@@ -673,7 +673,7 @@ tbody tr:last-child td {
      {/* MODAL DE VISUALIZAÇÃO (VER MAIS) */}
 {showViewModal && selectedMorador && (
   <div style={modalOverlay}>
-    <div style={{...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth: '550px'}}>
+    <div style={{...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth: '550px', maxHeight: '90vh', overflowY: 'auto'}}>
       <div style={modalHeader}>
         <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
           <div style={{padding:'10px', borderRadius:'12px', background:'#3b82f620', color:'#3b82f6'}}><User size={24}/></div>
@@ -743,7 +743,7 @@ tbody tr:last-child td {
       {/* MODAL DE SELEÇÃO DE COLUNAS PDF */}
       {showExportModal && (
         <div style={modalOverlay}>
-          <div style={{...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth: '400px'}}>
+          <div style={{...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth: '400px', maxHeight: '90vh', overflowY: 'auto'}}>
             <div style={modalHeader}>
               <h3 style={{margin:0}}>Configurar Relatório PDF</h3>
               <X size={20} style={{ cursor: 'pointer' }} onClick={() => setShowExportModal(false)} />

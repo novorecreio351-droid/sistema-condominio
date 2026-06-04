@@ -1179,7 +1179,7 @@ const itensExibidos = React.useMemo(() => {
 
   return (
     
-    <div style={pageContainer}>
+    <div style={{...pageContainer, padding: isMobile ? "20px 12px" : "20px", paddingTop: isMobile ? "60px" : "20px"}}>
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .animate-spin { animation: spin 1s linear infinite; }
@@ -1192,11 +1192,12 @@ const itensExibidos = React.useMemo(() => {
     border: 1px solid ${theme.border}; 
     border-radius: 10px; 
     box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
-    z-index: 100; 
+    z-index: 100;
     width: 180px; /* <--- Aumente aqui */
-    padding: 5px; 
+    max-width: calc(100vw - 24px);
+    padding: 5px;
 }
-    .column-select-item { 
+    .column-select-item {
   display: flex; 
   align-items: center; 
   gap: 10px; 
@@ -1235,7 +1236,7 @@ const itensExibidos = React.useMemo(() => {
       {/* Mova para cá, logo antes do final do componente */}
 {showExportModal && (
   <div style={modalOverlay}>
-    <div style={{ ...modalContent, backgroundColor: theme.mainBg, maxWidth: '500px' }}>
+    <div style={{ ...modalContent, backgroundColor: theme.mainBg, maxWidth: '500px', width: isMobile ? 'calc(100% - 24px)' : '90%', maxHeight: '90vh', overflowY: 'auto', padding: isMobile ? '16px' : '24px' }}>
       <div style={modalHeader}>
         <h2 style={{ color: theme.text, margin: 0 }}>Exportar Relatório</h2>
         <button onClick={() => setShowExportModal(false)} style={{ background: 'none', border: 'none', color: theme.text, cursor: 'pointer' }}>
@@ -1247,7 +1248,7 @@ const itensExibidos = React.useMemo(() => {
         Selecione as colunas que deseja incluir no arquivo PDF:
       </p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
         {selectedColumns.map(col => (
           <div 
             key={col.id} 
@@ -1465,7 +1466,7 @@ const itensExibidos = React.useMemo(() => {
 
       <div style={{...tableCard, backgroundColor: theme.mainBg, borderColor: theme.border}}>
         <div style={{ overflowX: 'auto' }}>
-            <table style={tableStyle}>
+            <table style={{...tableStyle, minWidth: '700px'}}>
                 <thead>
                     <tr style={{...thRow, borderBottomColor: theme.border, backgroundColor: theme.isDark ? '#1e293b' : '#f8fafc'}}>
     {[
@@ -1606,24 +1607,27 @@ const itensExibidos = React.useMemo(() => {
   borderTopColor: theme.border,
   backgroundColor: theme.mainBg,
   display: "flex",
+  flexWrap: "wrap",
+  gap: "12px",
   justifyContent: "space-between",
   alignItems: "center"
 }}>
 
   {/* ESQUERDA: Exibir + Contador */}
-  <div style={{ 
-    display: "flex", 
-    alignItems: "center", 
-    gap: "20px" 
+  <div style={{
+    display: "flex",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: "12px 20px"
   }}>
-    
+
     {/* Seletor Exibir */}
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
       <span style={{ fontSize: '13px', color: theme.textSecondary }}>
         Exibir:
       </span>
-      <select 
-        value={itemsPerPage} 
+      <select
+        value={itemsPerPage}
         onChange={(e) => {
           const val = e.target.value;
           setItemsPerPage(val === "Todos" ? "Todos" : Number(val));
@@ -1687,7 +1691,7 @@ const itensExibidos = React.useMemo(() => {
 
     {showModal && (
   <div style={modalOverlay}>
-    <div style={{ ...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth: '500px' }}>
+    <div style={{ ...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth: '500px', width: isMobile ? 'calc(100% - 24px)' : '90%', maxHeight: '90vh', overflowY: 'auto', padding: isMobile ? '16px' : '24px' }}>
       <div style={modalHeader}>
         <h3 style={{ margin: 0 }}>{modalType === "add" ? "Nova Reserva" : "Editar Mudança"}</h3>
         <X size={20} cursor="pointer" onClick={() => setShowModal(false)} />
@@ -1784,7 +1788,7 @@ const itensExibidos = React.useMemo(() => {
         )}
 
         {/* Nome e CPF */}
-        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px'}}>
+        <div style={{display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:'10px'}}>
           <div>
             <label style={labelStyle}>Nome do Responsável</label>
             <input 
@@ -1827,7 +1831,7 @@ const itensExibidos = React.useMemo(() => {
 </div>
 
         {/* Data e Telefone */}
-        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px'}}>
+        <div style={{display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:'10px'}}>
           <div>
             <label style={labelStyle}>Data</label>
             <input
@@ -1849,7 +1853,7 @@ const itensExibidos = React.useMemo(() => {
         </div>
 
         {/* Taxa e Convidados */}
-        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px'}}>
+        <div style={{display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:'10px'}}>
           <div>
             <label style={labelStyle}>Taxa (R$)</label>
             <input type="number" style={{...selectStyle, width:'100%', backgroundColor: theme.bg, color: theme.text, borderColor: theme.border}} value={formData.valor_taxa} onChange={e => setFormData({...formData, valor_taxa: e.target.value})} />
@@ -1861,7 +1865,7 @@ const itensExibidos = React.useMemo(() => {
         </div>
 
         {/* Pago e Status */}
-        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px'}}>
+        <div style={{display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:'10px'}}>
           <div>
             <label style={labelStyle}>Pago?</label>
             <select style={{...selectStyle, width:'100%', backgroundColor: theme.bg, color: theme.text, borderColor: theme.border}} value={formData.pago} onChange={e => setFormData({...formData, pago: e.target.value})}>
@@ -1997,7 +2001,7 @@ const itensExibidos = React.useMemo(() => {
       {/* MODAL VER MAIS - CORRIGIDO E ESTRUTURADO */}
       {showViewModal && selectedFesta && (
         <div style={modalOverlay}>
-          <div style={{...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth:'450px', maxHeight: '90vh', overflowY: 'auto'}}>
+          <div style={{...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth:'450px', width: isMobile ? 'calc(100% - 24px)' : '90%', maxHeight: '90vh', overflowY: 'auto', padding: isMobile ? '16px' : '24px'}}>
             <div style={modalHeader}>
               <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
                 <Calendar color="#3b82f6"/> 

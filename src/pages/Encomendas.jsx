@@ -51,7 +51,14 @@ const buttonSpinnerStyle = { ...spinnerAnimation, marginRight: '8px', display: '
 
 export default function Encomendas({ user }) {
   const { theme } = useTheme();
-  
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
+
   // Estados de Dados
   const [encomendas, setEncomendas] = useState([]);
   const [unidades, setUnidades] = useState([]);
@@ -923,7 +930,7 @@ export default function Encomendas({ user }) {
   };
 
   return (
-    <div style={{ ...pageContainer, backgroundColor: theme.bgBody, color: theme.text }}>
+    <div style={{ ...pageContainer, paddingTop: isMobile ? "55px" : pageContainer.padding, backgroundColor: theme.bgBody, color: theme.text }}>
       <style>{`
         @keyframes ${spinnerKeyframeName} { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes encomendas-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }

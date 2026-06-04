@@ -239,7 +239,7 @@ React.useEffect(() => {
   const blocosDisponiveis = ["Todos", ...new Set(unidades.map(u => u.bloco.toString()))].sort();
 
   return (
-    <div style={pageContainer}>
+    <div style={{...pageContainer, paddingTop: isMobile ? '60px' : '20px'}}>
       <style>{`
         .filter-pill { padding: 6px 12px; border-radius: 8px; border: 1px solid ${theme.border}; background: ${theme.mainBg}; cursor: pointer; font-size: 12px; font-weight: 500; color: ${theme.textSecondary}; transition: 0.2s; }
         .filter-pill.active { background: #3b82f6; color: white; border-color: #3b82f6; }
@@ -407,12 +407,12 @@ React.useEffect(() => {
       {/* MODAL DE CADASTRO */}
       {showModal && (
         <div style={modalOverlay}>
-          <div style={{...modalContent, backgroundColor: theme.mainBg, color: theme.text}}>
+          <div style={{...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxHeight: '90vh', overflowY: 'auto'}}>
             <div style={modalHeader}>
               <h3 style={{margin:0}}>{modalType === "add" ? "Nova Unidade" : "Editar Unidade"}</h3>
               <X size={20} style={{ cursor: 'pointer' }} onClick={() => setShowModal(false)} />
             </div>
-            <div style={formGrid}>
+            <div style={{...formGrid, gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr'}}>
               <div style={inputGroup}>
                 <label style={{...labelStyle, color: theme.textSecondary}}>Bloco</label>
                 <select style={{...selectStyle, backgroundColor: modalType === "edit" ? theme.bg : theme.mainBg, color: theme.text, borderColor: theme.border}} value={formData.bloco} disabled={modalType === "edit"} onChange={(e) => setFormData({...formData, bloco: e.target.value})}>
@@ -442,7 +442,7 @@ React.useEffect(() => {
                 </select>
               </div>
               {formData.status === "Inadimplente" && (
-                <div style={{ ...inputGroup, gridColumn: 'span 2' }}>
+                <div style={{ ...inputGroup, gridColumn: isMobile ? 'span 1' : 'span 2' }}>
                   <label style={{...labelStyle, color: theme.textSecondary}}>Valor da Dívida (R$)</label>
                   <input type="text" placeholder="Ex: 5.200,30" style={{...selectStyle, backgroundColor: theme.mainBg, color: theme.text, borderColor: theme.border}} value={formData.valor} onChange={(e) => setFormData({...formData, valor: e.target.value.replace(/[^\d.,]/g, '')})} />
                 </div>
@@ -459,7 +459,7 @@ React.useEffect(() => {
       {/* MODAL DE EXPORTAÇÃO PDF (MESMO ESTILO MORADORES) */}
       {showExportModal && (
         <div style={modalOverlay}>
-          <div style={{...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth: '400px'}}>
+          <div style={{...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth: '400px', maxHeight: '90vh', overflowY: 'auto'}}>
             <div style={modalHeader}>
               <h3 style={{margin:0}}>Configurar Relatório PDF</h3>
               <X size={20} style={{ cursor: 'pointer' }} onClick={() => setShowExportModal(false)} />

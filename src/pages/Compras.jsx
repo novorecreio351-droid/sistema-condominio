@@ -551,7 +551,7 @@ const ActionMenuItem = ({ onClick, icon: Icon, label, color, theme }) => {
   // ... (JSX do return abaixo)
 
      return (
-    <div style={pageContainer}>
+    <div style={{...pageContainer, ...(isMobile ? { paddingTop: '70px' } : {})}}>
       {/* --- LOADING GLOBAL --- */}
       {/* --- LOADING GLOBAL IGUAL A UNIDADES.JSX --- */}
 {loading && (
@@ -680,7 +680,7 @@ const ActionMenuItem = ({ onClick, icon: Icon, label, color, theme }) => {
         marginTop: '20px'
       }}>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: isMobile ? '700px' : 'auto' }}>
             <thead>
   <tr style={{ 
     ...thRow, 
@@ -870,7 +870,8 @@ const ActionMenuItem = ({ onClick, icon: Icon, label, color, theme }) => {
   backgroundColor: theme.mainBg,
   borderTop: `1px solid ${theme.border}`,
   fontSize: '14px',
-  flexWrap: isMobile ? 'column' : 'row',
+  flexDirection: isMobile ? 'column' : 'row',
+  flexWrap: 'wrap',
   gap: isMobile ? '15px' : '0'
 }}>
   {/* Seletor de Itens por Página */}
@@ -1068,10 +1069,10 @@ const ActionMenuItem = ({ onClick, icon: Icon, label, color, theme }) => {
 }}>
   <label style={labelStyle}>Itens da Compra</label>
   
-  <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', alignItems: 'flex-end' }}>
-    <div style={{ flex: 3 }}>
-      <input 
-        style={{ ...selectStyle, width: '100%', backgroundColor: theme.mainBg, color: theme.text }} 
+  <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', alignItems: 'flex-end', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+    <div style={{ flex: isMobile ? '1 1 100%' : 3 }}>
+      <input
+        style={{ ...selectStyle, width: '100%', backgroundColor: theme.mainBg, color: theme.text }}
         placeholder="Produto"
         value={tempProduto.nome}
         onChange={(e) => setTempProduto({...tempProduto, nome: e.target.value})}
@@ -1114,9 +1115,9 @@ const ActionMenuItem = ({ onClick, icon: Icon, label, color, theme }) => {
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
         padding: '8px', backgroundColor: theme.mainBg, borderRadius: '8px', fontSize: '13px' 
       }}>
-        <div style={{ display: 'flex', gap: '10px', color: theme.text }}>
+        <div style={{ display: 'flex', gap: '10px', color: theme.text, flexWrap: 'wrap', minWidth: 0 }}>
           <span style={{ fontWeight: '700' }}>{p.qtd}x</span>
-          <span>{p.nome}</span>
+          <span style={{ wordBreak: 'break-word' }}>{p.nome}</span>
           <span style={{ color: theme.textSecondary }}>- R$ {Number(p.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
         </div>
         <Trash2 size={14} color="#ef4444" cursor="pointer" onClick={() => setListaProdutos(listaProdutos.filter((_, i) => i !== idx))} />
@@ -1149,7 +1150,7 @@ const ActionMenuItem = ({ onClick, icon: Icon, label, color, theme }) => {
 </div>
 
 {/* 3. GRID: DATA SOLICITAÇÃO E APROVAÇÃO */}
-<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
+<div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
   <div>
     <label style={labelStyle}>Data da Solicitação</label>
     <input 
@@ -1183,7 +1184,7 @@ const ActionMenuItem = ({ onClick, icon: Icon, label, color, theme }) => {
 </div>
 
 {/* 5. GRID: VALOR ESTIMADO E STATUS */}
-<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
+<div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
   <div>
     <label style={labelStyle}>Valor Estimado Total</label>
     <input 

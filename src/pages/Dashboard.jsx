@@ -45,7 +45,14 @@ export default function Dashboard({ user }) {
   const [upcoming, setUpcoming] = useState([]);
   const [loading, setLoading] = useState(true);
   const [reunioesProximas, setReunioesProximas] = useState([]);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const { theme } = useTheme();
+
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
 
   const normalizeText = (text) => 
     String(text || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
@@ -190,8 +197,8 @@ export default function Dashboard({ user }) {
   }, [user]);
 
   return (
-  <div style={{ padding: "10px" }}>
-    <Header user={user} theme={theme} />
+  <div style={{ padding: "10px", paddingTop: isMobile ? "55px" : "10px" }}>
+    <Header user={user} theme={theme} isMobile={isMobile} />
 
     {reunioesProximas.length > 0 && (
       <div style={{
@@ -224,11 +231,11 @@ export default function Dashboard({ user }) {
                 }}>
                   {isHoje ? "Hoje" : "Amanhã"}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: theme.text, display: isMobile ? "block" : "inline" }}>
                     {ag.tipo} — {ag.nome}
                   </span>
-                  <span style={{ fontSize: 12, color: theme.textSecondary, marginLeft: 8 }}>
+                  <span style={{ fontSize: 12, color: theme.textSecondary, marginLeft: isMobile ? 0 : 8, display: isMobile ? "block" : "inline" }}>
                     às {ag.hora_inicio}{ag.assunto ? ` · ${ag.assunto}` : ""}
                   </span>
                 </div>
@@ -242,16 +249,17 @@ export default function Dashboard({ user }) {
     <Cards
       user={user} // Passe o user para o componente Cards
       theme={theme}
-      inadimplentes={loading ? "..." : stats.inadimplentes} 
+      isMobile={isMobile}
+      inadimplentes={loading ? "..." : stats.inadimplentes}
       moradores={loading ? "..." : stats.moradores}
       reservas={loading ? "..." : stats.reservas}
     />
 
     {/* Só mostra as listas detalhadas se NÃO for Conselheiro */}
     {user?.cargo !== "Conselheiro" && (
-      <div style={contentGrid}>
-        <RecentActivities logs={logs} loading={loading} theme={theme} />
-        <UpcomingBookings data={upcoming} loading={loading} theme={theme} onViewDetails={handleVerDetalhes} />
+      <div style={{ ...contentGrid, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>
+        <RecentActivities logs={logs} loading={loading} theme={theme} isMobile={isMobile} />
+        <UpcomingBookings data={upcoming} loading={loading} theme={theme} isMobile={isMobile} onViewDetails={handleVerDetalhes} />
       </div>
     )}
   </div>
@@ -282,11 +290,11 @@ const CardLoading = () => {
 
 /* ================= COMPONENTES DE INTERFACE ================= */
 
-function Header({ user, theme }) {
+function Header({ user, theme, isMobile }) {
   const primeiroNome = user?.nome ? user.nome.split(' ')[0] : "Usuário";
   return (
-    <div style={{ marginBottom: "30px" }}>
-      <h1 style={{ fontSize: "28px", fontWeight: "700", color: theme.text, marginBottom: "5px" }}>
+    <div style={{ marginBottom: isMobile ? "20px" : "30px" }}>
+      <h1 style={{ fontSize: isMobile ? "22px" : "28px", fontWeight: "700", color: theme.text, marginBottom: "5px" }}>
         Olá, {primeiroNome}! 👋
       </h1>
       <p style={{ color: theme.textSecondary }}>
@@ -296,10 +304,10 @@ function Header({ user, theme }) {
   );
 }
 
-function Cards({ user, inadimplentes, moradores, reservas, theme }) {
+function Cards({ user, inadimplentes, moradores, reservas, theme, isMobile }) {
   const isConselheiro = user?.cargo === "Conselheiro";
   return (
-    <div style={cardsGrid}>
+    <div style={{ ...cardsGrid, gridTemplateColumns: isMobile ? "repeat(auto-fit, minmax(150px, 1fr))" : cardsGrid.gridTemplateColumns, gap: isMobile ? "12px" : cardsGrid.gap, marginBottom: isMobile ? "20px" : cardsGrid.marginBottom }}>
       <Card theme={theme} title="Unidades Ocupadas" value={moradores} Icon={Users} color="#3b82f6" />
       
       {/* Esconde Reservas se for Conselheiro */}
@@ -326,7 +334,7 @@ function Card({ title, value, Icon, color, theme }) {
   );
 }
 
-function RecentActivities({ logs, loading, theme }) {
+function RecentActivities({ logs, loading, theme, isMobile }) {
   const formatTime = (dateString) => {
     if (!dateString) return "Recentemente";
     try {
@@ -353,8 +361,8 @@ function RecentActivities({ logs, loading, theme }) {
   };
 
   return (
-    <div style={{ ...sectionCard, backgroundColor: theme.mainBg, borderColor: theme.border }}>
-  <h3 style={{ ...sectionTitle, color: theme.text }}>Atividades Recentes</h3>
+    <div style={{ ...sectionCard, padding: isMobile ? "18px" : sectionCard.padding, backgroundColor: theme.mainBg, borderColor: theme.border }}>
+  <h3 style={{ ...sectionTitle, margin: isMobile ? "0 0 18px 0" : sectionTitle.margin, color: theme.text }}>Atividades Recentes</h3>
   
   {loading ? (
     <div style={{ padding: "40px", textAlign: "center" }}>
@@ -388,10 +396,10 @@ function RecentActivities({ logs, loading, theme }) {
   );
 }
 
-function UpcomingBookings({ data, loading, theme, onViewDetails }) {
+function UpcomingBookings({ data, loading, theme, onViewDetails, isMobile }) {
   return (
-    <div style={{ ...sectionCard, backgroundColor: theme.mainBg, borderColor: theme.border }}>
-      <h3 style={{ ...sectionTitle, color: theme.text }}>Próximos Agendamentos</h3>
+    <div style={{ ...sectionCard, padding: isMobile ? "18px" : sectionCard.padding, backgroundColor: theme.mainBg, borderColor: theme.border }}>
+      <h3 style={{ ...sectionTitle, margin: isMobile ? "0 0 18px 0" : sectionTitle.margin, color: theme.text }}>Próximos Agendamentos</h3>
       {loading ? (
         <div style={{ padding: "20px", textAlign: "center" }}><Loader2 className="spinner-anim" size={24} color="#3b82f6" /></div>
       ) : data.length === 0 ? (

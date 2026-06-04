@@ -36,7 +36,7 @@ export default function Calendario() {
   const blocosDisponiveis = ["Todos", "1", "2", "3", "4", "5", "8"];
 
   return (
-    <div style={pageContainer}>
+    <div style={{...pageContainer, paddingTop: isMobile ? '60px' : '20px'}}>
       <style>{`
         .filter-pill { padding: 6px 12px; border-radius: 8px; border: 1px solid ${theme.border}; background: ${theme.mainBg}; cursor: pointer; font-size: 12px; font-weight: 500; color: ${theme.textSecondary}; transition: 0.2s; }
         .filter-pill.active { background: #3b82f6; color: white; border-color: #3b82f6; }

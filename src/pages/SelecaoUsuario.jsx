@@ -17,6 +17,13 @@ export default function SelecaoUsuario({ onSelectUser }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [adminProfile, setAdminProfile] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
   // 1. Busca os usuários da planilha ao carregar o componente
   useEffect(() => {
     const fetchUsuarios = async () => {
@@ -104,8 +111,8 @@ export default function SelecaoUsuario({ onSelectUser }) {
   }
 
   return (
-    <div style={containerStyle}>
-  <div style={contentStyle}>
+    <div style={{ ...containerStyle, height: "auto", minHeight: "100vh", overflowY: "auto", padding: isMobile ? "24px 0" : 0 }}>
+  <div style={{ ...contentStyle, padding: isMobile ? "16px" : "20px" }}>
     <div style={{ textAlign: "center", marginBottom: "40px" }}>
       
       {/* 1. Substituímos o ícone Building2 e o texto pela tag img */}
@@ -140,19 +147,21 @@ export default function SelecaoUsuario({ onSelectUser }) {
                 onClick={() => setSelectedProfile(user)}
                 style={{
                   ...userCardStyle,
+                  padding: isMobile ? "14px" : "18px",
+                  gap: isMobile ? "12px" : "18px",
                   borderColor: hovered === user.email ? user.color : "#e2e8f0",
                   transform: hovered === user.email ? "translateY(-5px)" : "translateY(0)",
                   boxShadow: hovered === user.email ? `0 10px 20px -5px ${user.color}33` : "none",
                 }}
               >
-                <div style={{ ...iconWrapperStyle, backgroundColor: user.bg, color: user.color }}>
+                <div style={{ ...iconWrapperStyle, width: isMobile ? 48 : 60, height: isMobile ? 48 : 60, flexShrink: 0, backgroundColor: user.bg, color: user.color }}>
                   {user.icon}
                 </div>
-                <div style={{ textAlign: "left", flex: 1 }}>
-                  <h3 style={{ margin: 0, fontSize: "18px", color: "#1e293b" }}>{user.nome}</h3>
-                  <p style={{ margin: 0, fontSize: "13px", color: "#64748b" }}>{user.cargo}</p>
+                <div style={{ textAlign: "left", flex: 1, minWidth: 0 }}>
+                  <h3 style={{ margin: 0, fontSize: isMobile ? "16px" : "18px", color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.nome}</h3>
+                  <p style={{ margin: 0, fontSize: "13px", color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.cargo}</p>
                 </div>
-                <ArrowRight size={20} color={hovered === user.email ? user.color : "#cbd5e1"} style={{ transition: "0.3s" }} />
+                <ArrowRight size={20} color={hovered === user.email ? user.color : "#cbd5e1"} style={{ transition: "0.3s", flexShrink: 0 }} />
               </div>
             ))}
             {error && <p style={{...errorStyle, textAlign: 'center'}}>{error}</p>}

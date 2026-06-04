@@ -455,7 +455,7 @@ export default function Agendamento({ user }) {
   const totalDisponiveis = linhasDoDia.filter(l => l.tipo === "livre").length;
 
   return (
-    <div style={{ padding: "20px", maxWidth: "1200px", margin: "0 auto" }}>
+    <div style={{ padding: isMobile ? "20px 14px" : "20px", paddingTop: isMobile ? 60 : 20, maxWidth: "1200px", margin: "0 auto" }}>
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .animate-spin { animation: spin 1s linear infinite; }
@@ -646,7 +646,7 @@ export default function Agendamento({ user }) {
       {/* MODAL */}
       {showModal && (
         <div style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.75)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
-          <div style={{ background: theme.mainBg, borderRadius: 20, padding: 24, width: "90%", maxWidth: 480, border: `1px solid ${theme.border}`, maxHeight: "90vh", overflowY: "auto" }}>
+          <div style={{ background: theme.mainBg, borderRadius: 20, padding: isMobile ? 18 : 24, width: "90%", maxWidth: 480, border: `1px solid ${theme.border}`, maxHeight: "90vh", overflowY: "auto" }}>
 
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom: 20 }}>
               <h3 style={{ margin: 0, color: theme.text, fontSize: 16, fontWeight: 700 }}>
@@ -729,7 +729,7 @@ export default function Agendamento({ user }) {
               )}
 
               {/* Nome + Telefone */}
-              <div style={{ display:"grid", gridTemplateColumns:"1.2fr 1fr", gap: 10 }}>
+              <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "1.2fr 1fr", gap: 10 }}>
                 <div>
                   <label style={{ fontSize: 10, fontWeight: 700, textTransform:"uppercase", color: "#64748b", display:"block", marginBottom: 5 }}>Nome</label>
                   <input
@@ -751,7 +751,7 @@ export default function Agendamento({ user }) {
               </div>
 
               {/* Data + Hora + Duração */}
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap: 10 }}>
+              <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: 10 }}>
                 <div>
                   <label style={{ fontSize: 10, fontWeight: 700, textTransform:"uppercase", color: "#64748b", display:"block", marginBottom: 5 }}>Data</label>
                   <input
@@ -827,7 +827,7 @@ export default function Agendamento({ user }) {
               )}
 
               {/* Botões */}
-              <div style={{ display:"flex", gap: 10, marginTop: 4 }}>
+              <div style={{ display:"flex", gap: 10, marginTop: 4, flexWrap: "wrap" }}>
                 {modalType === "edit" && (
                   <button
                     onClick={() => handleDelete(formData.id)}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useTheme } from "../App";
 import { getSessionToken } from "../auth/session";
 import {
@@ -27,6 +27,7 @@ const TOKEN = import.meta.env.VITE_SHEETS_TOKEN;
 
 export default function Comunicado() {
   const { theme } = useTheme();
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [prompt, setPrompt] = useState("");
   const [tom, setTom] = useState("Formal");
   const [isGerando, setIsGerando] = useState(false);
@@ -98,6 +99,12 @@ export default function Comunicado() {
 
 const [menuAberto, setMenuAberto] = useState(false);
 const a4Ref = useRef();
+
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
 
   const gerarComIA = async () => {
     if (!prompt) return alert("Descreva o assunto.");
@@ -318,10 +325,10 @@ const compartilharImagemWhatsApp = async () => {
 };
 
   return (
-    <div style={{ padding: "10px" }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px' }}>
+    <div style={{ padding: "10px", paddingTop: isMobile ? 56 : 10 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={{ fontSize: "28px", fontWeight: "700", color: theme.text, marginBottom: "5px" }}>
+          <h1 style={{ fontSize: isMobile ? "22px" : "28px", fontWeight: "700", color: theme.text, marginBottom: "5px" }}>
             Novo Comunicado com IA
           </h1>
           <p style={{ color: theme.textSecondary }}>
@@ -549,8 +556,16 @@ const compartilharImagemWhatsApp = async () => {
 </div>
           </div>
 
-          <div style={previewContent}>
-            <div style={a4Paper} ref={a4Ref}>
+          <div style={{ ...previewContent, padding: isMobile ? '14px 0' : '20px', justifyContent: isMobile ? 'flex-start' : 'center' }}>
+            <div
+              style={{
+                ...a4Paper,
+                transform: isMobile ? `scale(${Math.min(1, (window.innerWidth - 40) / 794)})` : 'none',
+                transformOrigin: 'top left',
+                marginBottom: isMobile ? `${-1123 * (1 - Math.min(1, (window.innerWidth - 40) / 794))}px` : '0',
+              }}
+              ref={a4Ref}
+            >
               <div style={{ textAlign: 'center', marginBottom: '30px' }}>
                 <div style={{ ...logoWrapper, marginTop: '-30px' }}>
                   <img src="/favicon.png" alt="Logo" style={{ width: '90px', height: '90px' }} />
@@ -603,11 +618,9 @@ const a4Paper = {
   color: '#333', 
   margin: '0 auto', 
   boxSizing: 'border-box', 
-  display: 'flex', 
-  flexDirection: 'column',
-  // Se estiver no mobile, podemos dar um "zoom out" visual
-  transform: window.innerWidth < 800 ? `scale(${window.innerWidth / 850})` : 'none',
-  transformOrigin: 'top center'
+  display: 'flex',
+  flexDirection: 'column'
+  // O zoom/scale do mobile é aplicado inline (reativo) no JSX, via isMobile.
 };
 const contentGrid = { 
   display: "grid", 

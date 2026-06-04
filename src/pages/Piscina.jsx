@@ -920,7 +920,7 @@ const handleSort = (key) => {
 
   return (
     
-    <div style={pageContainer}>
+    <div style={{...pageContainer, ...(isMobile ? { paddingTop: '70px' } : {})}}>
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .animate-spin { animation: spin 1s linear infinite; }
@@ -976,7 +976,7 @@ const handleSort = (key) => {
       {/* Mova para cá, logo antes do final do componente */}
 {showExportModal && (
   <div style={modalOverlay}>
-    <div style={{ ...modalContent, backgroundColor: theme.mainBg, maxWidth: '500px' }}>
+    <div style={{ ...modalContent, backgroundColor: theme.mainBg, maxWidth: '500px', width: isMobile ? 'calc(100% - 24px)' : '90%', maxHeight: '90vh', overflowY: 'auto', padding: isMobile ? '16px' : '24px' }}>
       <div style={modalHeader}>
         <h2 style={{ color: theme.text, margin: 0 }}>Exportar Relatório</h2>
         <button onClick={() => setShowExportModal(false)} style={{ background: 'none', border: 'none', color: theme.text, cursor: 'pointer' }}>
@@ -1220,7 +1220,7 @@ const handleSort = (key) => {
 </div>
       <div style={{...tableCard, backgroundColor: theme.mainBg, borderColor: theme.border}}>
         <div style={{ overflowX: 'auto' }}>
-            <table style={tableStyle}>
+            <table style={{...tableStyle, minWidth: isMobile ? '700px' : 'auto'}}>
                 <thead>
                     <tr style={{...thRow, borderBottomColor: theme.border, backgroundColor: theme.isDark ? '#1e293b' : '#f8fafc'}}>
     {[
@@ -1432,7 +1432,9 @@ const handleSort = (key) => {
   backgroundColor: theme.mainBg,
   display: "flex",
   justifyContent: "space-between",
-  alignItems: "center"
+  alignItems: "center",
+  flexWrap: "wrap",
+  gap: isMobile ? "12px" : "0"
 }}>
 
   {/* ESQUERDA: Exibir + Contador */}
@@ -1512,7 +1514,7 @@ const handleSort = (key) => {
 
     {showModal && (
   <div style={modalOverlay}>
-    <div style={{ ...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth: '500px' }}>
+    <div style={{ ...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth: '500px', width: isMobile ? 'calc(100% - 24px)' : '90%', maxHeight: '90vh', overflowY: 'auto', padding: isMobile ? '16px' : '24px' }}>
       <div style={modalHeader}>
         <h3 style={{ margin: 0 }}>{modalType === "add" ? "Novo Cadastro Piscina" : "Editar Cadastro"}</h3>
         <X size={20} cursor="pointer" onClick={() => setShowModal(false)} />
@@ -1614,7 +1616,7 @@ const handleSort = (key) => {
 )}
 
        {/* Nome, CPF e Telefone (Bloqueados se for morador cadastrado) */}
-<div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '10px', marginBottom: '15px' }}>
+<div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr 1fr', gap: '10px', marginBottom: '15px' }}>
   {/* NOME */}
   <div>
     <label style={labelStyle}>Nome</label>
@@ -1651,7 +1653,7 @@ const handleSort = (key) => {
 </div>
 
         {/* Nascimento e Validade */}
-        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px'}}>
+        <div style={{display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:'10px'}}>
           <div>
             <label style={labelStyle}>Data Nascimento</label>
             <input 
@@ -1816,7 +1818,7 @@ const handleSort = (key) => {
       {/* MODAL VER MAIS - CORRIGIDO E ESTRUTURADO */}
       {showViewModal && selectedFesta && (
   <div style={modalOverlay}>
-    <div style={{...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth:'450px', maxHeight: '90vh', overflowY: 'auto'}}>
+    <div style={{...modalContent, backgroundColor: theme.mainBg, color: theme.text, maxWidth:'450px', width: isMobile ? 'calc(100% - 24px)' : '90%', maxHeight: '90vh', overflowY: 'auto', padding: isMobile ? '16px' : '24px'}}>
       <div style={modalHeader}>
         <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
           <Calendar color="#3b82f6"/> 

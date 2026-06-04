@@ -18,6 +18,13 @@ export default function Usuarios({ user, onLogout }) {
   const [modalType, setModalType] = useState("add"); // add | edit
   const [form, setForm] = useState(FORM_INICIAL);
   const [showSenha, setShowSenha] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
 
   const fetchUsuarios = async () => {
     try {
@@ -94,7 +101,7 @@ export default function Usuarios({ user, onLogout }) {
   const btnIcon = { background: "none", border: `1px solid ${theme.border}`, borderRadius: 8, padding: 8, cursor: "pointer", color: theme.text, display: "inline-flex" };
 
   return (
-    <div style={{ padding: 20, maxWidth: 1000, margin: "0 auto" }}>
+    <div style={{ padding: isMobile ? "20px 14px" : 20, paddingTop: isMobile ? 60 : 20, maxWidth: 1000, margin: "0 auto" }}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}} .animate-spin{animation:spin 1s linear infinite}`}</style>
 
       {(loading || saving) && (
@@ -108,11 +115,11 @@ export default function Usuarios({ user, onLogout }) {
           <h1 style={{ fontSize: 24, fontWeight: 700, color: theme.text, margin: 0 }}>Usuários</h1>
           <p style={{ fontSize: 14, color: theme.textSecondary, margin: "4px 0 0" }}>Gerencie os acessos do sistema.</p>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={abrirNovo} style={{ background: "#3b82f6", color: "white", border: "none", padding: "10px 16px", borderRadius: 10, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", width: isMobile ? "100%" : "auto" }}>
+          <button onClick={abrirNovo} style={{ flex: isMobile ? 1 : "none", justifyContent: "center", background: "#3b82f6", color: "white", border: "none", padding: "10px 16px", borderRadius: 10, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
             <Plus size={16} /> Novo Usuário
           </button>
-          <button onClick={() => { clearSessionToken(); if (onLogout) onLogout(); }} style={{ background: "#ef444420", color: "#ef4444", border: "1px solid #ef4444", padding: "10px 16px", borderRadius: 10, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+          <button onClick={() => { clearSessionToken(); if (onLogout) onLogout(); }} style={{ flex: isMobile ? 1 : "none", justifyContent: "center", background: "#ef444420", color: "#ef4444", border: "1px solid #ef4444", padding: "10px 16px", borderRadius: 10, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
             <LogOut size={16} /> Sair do sistema
           </button>
         </div>
@@ -125,11 +132,11 @@ export default function Usuarios({ user, onLogout }) {
           )}
           {usuarios.map(u => (
             <div key={u.id || u.email} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 14px", borderRadius: 10, background: theme.bg, border: `1px solid ${theme.border}`, flexWrap: "wrap" }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 700, color: theme.text }}>{u.nome || "—"}</div>
-                <div style={{ fontSize: 13, color: theme.textSecondary }}>{u.email} · <span style={{ fontWeight: 600 }}>{u.cargo}</span></div>
+              <div style={{ minWidth: 0, flex: "1 1 160px" }}>
+                <div style={{ fontWeight: 700, color: theme.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.nome || "—"}</div>
+                <div style={{ fontSize: 13, color: theme.textSecondary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email} · <span style={{ fontWeight: 600 }}>{u.cargo}</span></div>
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                 <button title="Editar" style={btnIcon} onClick={() => abrirEditar(u)}><Edit2 size={16} /></button>
                 <button title="Gerar senha temporária" style={btnIcon} onClick={() => resetarSenha(u)}><KeyRound size={16} /></button>
                 <button title="Excluir" style={{ ...btnIcon, color: "#ef4444", borderColor: "#ef4444" }} onClick={() => excluir(u)}><Trash2 size={16} /></button>
@@ -141,7 +148,7 @@ export default function Usuarios({ user, onLogout }) {
 
       {showModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
-          <div style={{ background: theme.mainBg, borderRadius: 16, padding: 24, width: "100%", maxWidth: 440, border: `1px solid ${theme.border}` }}>
+          <div style={{ background: theme.mainBg, borderRadius: 16, padding: isMobile ? 18 : 24, width: "100%", maxWidth: 440, border: `1px solid ${theme.border}`, maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
               <h3 style={{ margin: 0, color: theme.text, fontSize: 17, fontWeight: 700 }}>{modalType === "add" ? "Novo Usuário" : "Editar Usuário"}</h3>
               <X size={20} color={theme.textSecondary} style={{ cursor: "pointer" }} onClick={() => setShowModal(false)} />

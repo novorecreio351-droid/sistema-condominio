@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { 
   ArrowLeft, CheckCircle, XCircle, Package, ShieldCheck, 
   Eraser, Info, User, MapPin, AlertCircle} from 'lucide-react';
@@ -8,6 +8,13 @@ export default function Aprovacao() {
   const sigCanvas = useRef(null);
   // eslint-disable-next-line no-unused-vars
   const [idSolicitacao, setIdSolicitacao] = useState("C17007");
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
 
   // --- ESTILOS (CSS EM JAVASCRIPT) ---
   const s = {
@@ -16,12 +23,12 @@ export default function Aprovacao() {
       minHeight: '100vh',
       color: '#f8fafc',
       fontFamily: 'sans-serif',
-      padding: '20px'
+      padding: isMobile ? '60px 14px 24px' : '20px'
     },
     card: {
       backgroundColor: '#1e293b',
       borderRadius: '16px',
-      padding: '24px',
+      padding: isMobile ? '18px' : '24px',
       marginBottom: '20px',
       border: '1px solid #334155',
       boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
@@ -122,7 +129,7 @@ export default function Aprovacao() {
           </div>
         </div>
 
-        <h1 style={{ fontSize: '32px', fontWeight: '900', marginBottom: '8px' }}>
+        <h1 style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: '900', marginBottom: '8px' }}>
           Aprovação <span style={{ color: '#3b82f6' }}>#{idSolicitacao}</span>
         </h1>
         <p style={{ color: '#94a3b8', marginBottom: '30px' }}>Validação de documento oficial de compras e suprimentos.</p>
@@ -164,7 +171,8 @@ export default function Aprovacao() {
             <Package size={18} color="#3b82f6" />
             <h2 style={{ fontSize: '14px', fontWeight: 'bold', margin: 0 }}>ITENS DA REQUISIÇÃO</h2>
           </div>
-          <table style={s.table}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ ...s.table, minWidth: isMobile ? 460 : 0 }}>
             <thead>
               <tr>
                 <th style={s.th}>PRODUTO</th>
@@ -185,6 +193,7 @@ export default function Aprovacao() {
               </tr>
             </tbody>
           </table>
+          </div>
           <div style={{ textAlign: 'right', marginTop: '20px' }}>
             <span style={s.label}>Valor Total</span>
             <span style={{ fontSize: '28px', fontWeight: '900', color: '#3b82f6' }}>R$ 25,00</span>
