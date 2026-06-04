@@ -982,6 +982,10 @@ export default function Encomendas({ user }) {
           .enc-desktop-table { display: none; }
           .enc-mobile-list { display: flex; flex-direction: column; gap: 12px; padding: 14px; }
           .enc-details-grid { grid-template-columns: 1fr; gap: 16px; padding: 16px 18px; }
+          /* Mobile: box da foto com altura FIXA (o flex:1 + height:100% colapsava e a
+             imagem invadia o card Destinatário) e etiqueta inteira sem corte. */
+          .enc-photo-box { flex: none !important; min-height: 0 !important; height: 260px !important; }
+          .enc-photo-img { object-fit: contain !important; }
           .encomendas-photo-actions { flex-direction: column; }
           .encomendas-footer-buttons { flex-direction: column; }
         }
@@ -1513,7 +1517,7 @@ export default function Encomendas({ user }) {
                 <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   📸 Foto da Etiqueta
                 </div>
-                <div style={{ position: 'relative', flex: 1, minHeight: '380px', borderRadius: '16px', overflow: 'hidden', border: `2px solid ${theme.border}`, backgroundColor: theme.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div className="enc-photo-box" style={{ position: 'relative', flex: 1, minHeight: '380px', borderRadius: '16px', overflow: 'hidden', border: `2px solid ${theme.border}`, backgroundColor: theme.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {selectedPhotoUrls.length > 0 ? (
                     <>
                       {photoLoading ? (
@@ -1523,6 +1527,7 @@ export default function Encomendas({ user }) {
                         </div>
                       ) : photoSrc ? (
                         <img
+                          className="enc-photo-img"
                           src={photoSrc}
                           alt="Encomenda"
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
